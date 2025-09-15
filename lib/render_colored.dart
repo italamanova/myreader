@@ -1,21 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'dart:typed_data';
+import 'translation_service.dart';
 
-class SelectAndColorPdf extends StatefulWidget {
-  const SelectAndColorPdf({super.key});
+class PdfTranslateAndHighlight extends StatefulWidget {
+  const PdfTranslateAndHighlight({super.key, this.apiKey});
+  final String? apiKey;
   @override
-  State<SelectAndColorPdf> createState() => _SelectAndColorPdfState();
+  State<PdfTranslateAndHighlight> createState() => _PdfTranslateAndHighlightState();
 }
 
-class _SelectAndColorPdfState extends State<SelectAndColorPdf> {
-  final _controller = PdfViewerController();
+class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
   final _viewerKey = GlobalKey<SfPdfViewerState>();
-  Uint8List? _bytes;
-  OverlayEntry? _menu;
+  late final PdfViewerController _controller;
+  late final TranslationService _translator;
 
-  Future<void> _pick() async {
+  Uint8List? _bytes;
+  OverlayEntry? _popup;
+  String _chosenLang = 'uk'; // default target language
+  String? _lastTranslation;
+  bool _translating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final apiKey = widget.apiKey ?? dotenv.env['DEEPL_API_KEY']!;
+    _translator = DeepLTranslationService(apiKey);
+    _controller = PdfViewerController();
+  }
+
+  @override
+  void dispose() {
+    _popup?.remove();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickPdf() async {
     final res = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -24,65 +48,158 @@ class _SelectAndColorPdfState extends State<SelectAndColorPdf> {
     if (res != null) setState(() => _bytes = res.files.single.bytes);
   }
 
-  void _showMenu(BuildContext context, PdfTextSelectionChangedDetails d) {
-    // Position a tiny floating menu near the selected region
-    final overlay = Overlay.of(context);
-    final rect = d.globalSelectedRegion!;
-    const menuWidth = 180.0, menuHeight = 56.0;
+  void _hidePopup() {
+    _popup?.remove();
+    _popup = null;
+    _lastTranslation = null;
+  }
 
-    _menu?.remove();
-    _menu = OverlayEntry(
-      builder: (_) => Positioned(
-        left: (rect.left).clamp(8, MediaQuery.of(context).size.width - menuWidth - 8),
-        top: (rect.top - menuHeight - 8).clamp(8, MediaQuery.of(context).size.height - menuHeight - 8),
-        child: Material(
-          elevation: 6,
-          borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
-            width: menuWidth,
-            height: menuHeight,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                for (final color in [Colors.yellow, Colors.cyan, Colors.pinkAccent, Colors.lime])
-                  InkWell(
-                    onTap: () async {
-                      final lines = _viewerKey.currentState?.getSelectedTextLines();
-                      if (lines != null && lines.isNotEmpty) {
-                        final ann = HighlightAnnotation(textBoundsCollection: lines);
-                        ann.color = color;       // set highlight color
-                        // ann.opacity = 0.7;      // optional: make it translucent
-                        _controller.addAnnotation(ann);
-                      }
-                      _controller.clearSelection();
-                      _menu?.remove(); _menu = null;
-                    },
-                    child: CircleAvatar(radius: 12, backgroundColor: color),
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.content_copy, size: 18),
-                  tooltip: 'Copy',
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: d.selectedText ?? ''));
-                    _controller.clearSelection();
-                    _menu?.remove(); _menu = null;
-                  },
+  Future<void> _translateSelectedText(String text) async {
+    setState(() {
+      _translating = true;
+      _lastTranslation = null;
+    });
+    try {
+      final translated = await _translator.translate(text: text, targetLang: _chosenLang);
+      // setState(() => _lastTranslation = translated);
+      setState(() {
+        _lastTranslation = translated;
+        print(translated);   // 👈 this prints to your debug console
+      });
+    } catch (e) {
+      // setState(() => _lastTranslation = 'Translation failed: $e');
+      setState(() {
+        _lastTranslation = 'Translation failed: $e';
+        print(e);   // 👈 this prints to your debug console
+      });
+    } finally {
+      setState(() => _translating = false);
+    }
+  }
+
+  void _showPopup(BuildContext context, PdfTextSelectionChangedDetails d) {
+    final overlay = Overlay.of(context);
+    final region = d.globalSelectedRegion!;
+    const width = 260.0;
+
+    _popup?.remove();
+    _popup = OverlayEntry(
+      builder: (_) {
+        final theme = Theme.of(context);
+        return Positioned(
+          left: (region.left).clamp(8, MediaQuery.of(context).size.width - width - 8),
+          top: (region.top - 140).clamp(8, MediaQuery.of(context).size.height - 160),
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints.tightFor(width: width),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Color row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (final c in [Colors.yellow, Colors.cyan, Colors.pinkAccent, Colors.lime])
+                          InkWell(
+                            child: CircleAvatar(radius: 12, backgroundColor: c),
+                            onTap: () async {
+                              final lines = _viewerKey.currentState?.getSelectedTextLines();
+                              if (lines != null && lines.isNotEmpty) {
+                                final ann = HighlightAnnotation(textBoundsCollection: lines)
+                                  ..color = c
+                                  ..opacity = 0.35;
+                                _controller.addAnnotation(ann);
+                              }
+                              // Keep selection so we can also translate if they want.
+                            },
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.content_copy, size: 18),
+                          tooltip: 'Copy',
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: d.selectedText ?? ''));
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Language dropdown + Translate button
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _chosenLang,
+                            decoration: const InputDecoration(isDense: true, labelText: 'Lang'),
+                            items: const [
+                              DropdownMenuItem(value: 'sv', child: Text('Swedish')),
+                              DropdownMenuItem(value: 'en', child: Text('English')),
+                              DropdownMenuItem(value: 'uk', child: Text('Ukrainian')),
+                              DropdownMenuItem(value: 'ru', child: Text('Russian')),
+                            ],
+                            onChanged: (v) => setState(() => _chosenLang = v ?? 'uk'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: (_translating || (d.selectedText?.trim().isEmpty ?? true))
+                              ? null
+                              : () => _translateSelectedText(d.selectedText!.trim()),
+                          child: _translating
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Text('Translate'),
+                        ),
+                      ],
+                    ),
+
+                    // Translation result area
+                    if (_lastTranslation != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(_lastTranslation!, style: const TextStyle(fontSize: 13)),
+                      ),
+                    ],
+
+                    // Close
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          _controller.clearSelection();
+                          _hidePopup();
+                        },
+                        child: const Text('Close'),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
-    overlay.insert(_menu!);
+    overlay.insert(_popup!);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select & Color PDF Text'),
-        actions: [IconButton(icon: const Icon(Icons.folder_open), onPressed: _pick)],
+        title: const Text('PDF: Highlight + Instant Translate'),
+        actions: [
+          IconButton(icon: const Icon(Icons.folder_open), onPressed: _pickPdf),
+        ],
       ),
       body: _bytes == null
           ? const Center(child: Text('Pick a PDF to start'))
@@ -90,12 +207,12 @@ class _SelectAndColorPdfState extends State<SelectAndColorPdf> {
         _bytes!,
         key: _viewerKey,
         controller: _controller,
-        canShowTextSelectionMenu: false, // we show our own menu
+        canShowTextSelectionMenu: false, // we supply our own popup
         onTextSelectionChanged: (details) {
-          if (details.selectedText == null) {
-            _menu?.remove(); _menu = null;
+          if (details.selectedText == null || details.globalSelectedRegion == null) {
+            _hidePopup();
           } else {
-            _showMenu(context, details);
+            _showPopup(context, details);
           }
         },
       ),

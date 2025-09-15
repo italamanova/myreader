@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'render_colored.dart';
-import 'render_as_jpeg.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
+  final apiKey = dotenv.env['DEEPL_API_KEY']!;
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const PdfReaderApp());
+  runApp(PdfReaderApp(apiKey: apiKey));
 }
 
 class PdfReaderApp extends StatelessWidget {
-  const PdfReaderApp({super.key});
+  final String apiKey;
+  const PdfReaderApp({super.key, required this.apiKey});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -17,8 +20,7 @@ class PdfReaderApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: const SelectAndColorPdf(),
-      // home: const HomeScreen(),
+      home: PdfTranslateAndHighlight(apiKey: apiKey),
       debugShowCheckedModeBanner: false,
     );
   }
