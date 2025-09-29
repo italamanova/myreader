@@ -80,7 +80,7 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
   void _showPopup(BuildContext context, PdfTextSelectionChangedDetails d) {
     final overlay = Overlay.of(context);
     final region = d.globalSelectedRegion!;
-    const width = 260.0;
+    const width = 300.0;
 
     _popup?.remove();
     _popup = OverlayEntry(
@@ -114,14 +114,25 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
                                   ..opacity = 0.35;
                                 _controller.addAnnotation(ann);
                               }
-                              // Keep selection so we can also translate if they want.
                             },
                           ),
+
+                        // Copy
                         IconButton(
                           icon: const Icon(Icons.content_copy, size: 18),
                           tooltip: 'Copy',
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: d.selectedText ?? ''));
+                          },
+                        ),
+
+                        // Close
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          tooltip: 'Close',
+                          onPressed: () {
+                            _controller.clearSelection();
+                            _hidePopup();
                           },
                         ),
                       ],
@@ -131,18 +142,20 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
                     // Language dropdown + Translate button
                     Row(
                       children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _chosenLang,
-                            decoration: const InputDecoration(isDense: true, labelText: 'Lang'),
-                            items: const [
-                              DropdownMenuItem(value: 'sv', child: Text('Swedish')),
-                              DropdownMenuItem(value: 'en', child: Text('English')),
-                              DropdownMenuItem(value: 'uk', child: Text('Ukrainian')),
-                              DropdownMenuItem(value: 'ru', child: Text('Russian')),
-                            ],
-                            onChanged: (v) => setState(() => _chosenLang = v ?? 'uk'),
-                          ),
+                        // Replace this part in your Column inside the OverlayEntry
+                        DropdownMenu<String>(
+                          initialSelection: _chosenLang,
+                          onSelected: (value) {
+                            if (value != null) {
+                              setState(() => _chosenLang = value);
+                            }
+                          },
+                          dropdownMenuEntries: const [
+                            DropdownMenuEntry(value: 'sv', label: 'Swedish'),
+                            DropdownMenuEntry(value: 'en', label: 'English'),
+                            DropdownMenuEntry(value: 'uk', label: 'Ukrainian'),
+                          ],
+                          label: const Text('Language'),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -169,18 +182,6 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
                         child: Text(_lastTranslation!, style: const TextStyle(fontSize: 13)),
                       ),
                     ],
-
-                    // Close
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          _controller.clearSelection();
-                          _hidePopup();
-                        },
-                        child: const Text('Close'),
-                      ),
-                    ),
                   ],
                 ),
               ),
