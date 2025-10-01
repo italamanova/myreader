@@ -54,18 +54,22 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
     _lastTranslation = null;
   }
 
-  Future<void> _translateSelectedText(String text) async {
+  Future<void> _translateSelectedText(BuildContext context, PdfTextSelectionChangedDetails d) async {
     setState(() {
       _translating = true;
       _lastTranslation = null;
     });
     try {
-      final translated = await _translator.translate(text: text, targetLang: _chosenLang);
-      // setState(() => _lastTranslation = translated);
+      final translated = await _translator.translate(text: d.selectedText!.trim(), targetLang: _chosenLang);
       setState(() {
         _lastTranslation = translated;
         print(translated);   // 👈 this prints to your debug console
       });
+      if (_popup != null) {
+        _popup!.remove();
+        _popup = null;
+        _showPopup(context, d);
+      }
     } catch (e) {
       // setState(() => _lastTranslation = 'Translation failed: $e');
       setState(() {
@@ -142,7 +146,6 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
                     // Language dropdown + Translate button
                     Row(
                       children: [
-                        // Replace this part in your Column inside the OverlayEntry
                         DropdownMenu<String>(
                           initialSelection: _chosenLang,
                           onSelected: (value) {
@@ -161,7 +164,7 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
                         ElevatedButton(
                           onPressed: (_translating || (d.selectedText?.trim().isEmpty ?? true))
                               ? null
-                              : () => _translateSelectedText(d.selectedText!.trim()),
+                              : () => _translateSelectedText(context, d),
                           child: _translating
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                               : const Text('Translate'),
