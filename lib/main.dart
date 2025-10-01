@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'render.dart';
+import 'pdf_translate_and_highlight.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'home_page.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
@@ -15,13 +16,10 @@ class PdfReaderApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Reader',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
-      home: PdfTranslateAndHighlight(apiKey: apiKey),
       debugShowCheckedModeBanner: false,
+      title: 'My Reader',
+      theme: ThemeData(useMaterial3: true),
+      home: const HomePage(),
     );
   }
 }
