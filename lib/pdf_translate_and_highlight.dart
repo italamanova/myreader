@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:myreader/text_popup.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'translation_service.dart';
 
 class PdfTranslateAndHighlight extends StatefulWidget {
@@ -33,6 +34,14 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
     final apiKey = widget.apiKey ?? dotenv.env['DEEPL_API_KEY']!;
     _translator = DeepLTranslationService(apiKey);
     _controller = PdfViewerController();
+
+    // Delay until widget is built, then jump
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final lastPage = await _loadLastPage();
+      if (lastPage != null) {
+        _controller.jumpToPage(lastPage);
+      }
+    });
   }
 
   @override
@@ -115,6 +124,16 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
     overlay.insert(_popup!);
   }
 
+  Future<void> _saveLastPage(int page) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('lastPage_${widget.file.path}', page);
+  }
+
+  Future<int?> _loadLastPage() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('lastPage_${widget.file.path}');
+  }
+
   Future<void> _autoSave() async {
     try {
       final bytes = await _controller.saveDocument(flattenOption: PdfFlattenOption.none);
@@ -137,11 +156,14 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
           // ),
         ],
       ),
-      body: SfPdfViewer.memory(
-        widget.file.readAsBytesSync(),
+      body: SfPdfViewer.file(
+        widget.file,
         key: _viewerKey,
         controller: _controller,
-        canShowTextSelectionMenu: false, // we supply our own popup
+        canShowTextSelectionMenu: false,
+        onPageChanged: (details) {
+          _saveLastPage(details.newPageNumber);
+        },
         onTextSelectionChanged: (details) {
           if (details.selectedText == null ||
               details.globalSelectedRegion == null) {
