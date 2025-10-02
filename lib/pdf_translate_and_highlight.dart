@@ -1,21 +1,14 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:file_selector/file_selector.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:myreader/pdf_popup.dart';
+import 'package:myreader/text_popup.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:path_provider/path_provider.dart';
 import 'translation_service.dart';
 
 class PdfTranslateAndHighlight extends StatefulWidget {
-  const PdfTranslateAndHighlight({
-    super.key,
-    this.apiKey,
-    required this.file,
-  });
+  const PdfTranslateAndHighlight({super.key, this.apiKey, required this.file});
 
   final String? apiKey;
   final File file;
@@ -50,15 +43,6 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
     _popup?.remove();
     _controller.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickPdf() async {
-    final res = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-      withData: true,
-    );
-    if (res != null) setState(() => _bytes = res.files.single.bytes);
   }
 
   void _hidePopup() {
@@ -105,7 +89,7 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
 
     _popup?.remove();
     _popup = OverlayEntry(
-      builder: (_) => PdfSelectionPopup(
+      builder: (_) => TextSelectionPopup(
         region: region,
         selectedText: d.selectedText,
         translation: _lastTranslation,
@@ -136,59 +120,19 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
 
   Future<void> _savePdfWithAnnotations() async {
     try {
-      // 1. Ask viewer to give us the current doc with annotations
       final annotatedBytes = await _controller.saveDocument(
         flattenOption: PdfFlattenOption.none,
       );
 
-      // 2. Overwrite the same file in the app’s folder
       await widget.file.writeAsBytes(annotatedBytes, flush: true);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Annotations saved to ${widget.file.path}')),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save annotations: $e')),
+          SnackBar(content: Text('Failed to save the file: $e')),
         );
       }
     }
   }
-  // Future<void> _savePdfWithAnnotations() async {
-  //   if (_bytes == null) return;
-  //
-  //   try {
-  //     // Grab the whole PDF *including the annotations currently in the viewer*
-  //     final savedBytes = await _controller.saveDocument(
-  //       // Only affects form fields; annotations remain editable either way.
-  //       flattenOption: PdfFlattenOption.none,
-  //     );
-  //
-  //     final dir = await getApplicationDocumentsDirectory();
-  //     final outDir = Directory('${dir.path}/AnnotatedPDFs');
-  //     await outDir.create(recursive: true);
-  //
-  //     final filePath =
-  //         '${outDir.path}/annotated_${DateTime.now().toIso8601String().replaceAll(":", "-")}.pdf';
-  //     await File(filePath).writeAsBytes(savedBytes, flush: true);
-  //
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text('Saved annotated PDF to $filePath')),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text('Failed to save PDF: $e')),
-  //       );
-  //     }
-  //   }
-  // }
-
 
   @override
   Widget build(BuildContext context) {
@@ -196,25 +140,26 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
       appBar: AppBar(
         title: const Text('Book reader'),
         actions: [
-          IconButton(icon: const Icon(Icons.folder_open), onPressed: _pickPdf),
-          IconButton(icon: const Icon(Icons.save), onPressed: _savePdfWithAnnotations),
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _savePdfWithAnnotations,
+          ),
         ],
       ),
-      body:
-          SfPdfViewer.memory(
-              _bytes!,
-              key: _viewerKey,
-              controller: _controller,
-              canShowTextSelectionMenu: false, // we supply our own popup
-              onTextSelectionChanged: (details) {
-                if (details.selectedText == null ||
-                    details.globalSelectedRegion == null) {
-                  _hidePopup();
-                } else {
-                  _showPopup(context, details);
-                }
-              },
-            ),
+      body: SfPdfViewer.memory(
+        _bytes!,
+        key: _viewerKey,
+        controller: _controller,
+        canShowTextSelectionMenu: false, // we supply our own popup
+        onTextSelectionChanged: (details) {
+          if (details.selectedText == null ||
+              details.globalSelectedRegion == null) {
+            _hidePopup();
+          } else {
+            _showPopup(context, details);
+          }
+        },
+      ),
     );
   }
 }

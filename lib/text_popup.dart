@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class PdfSelectionPopup extends StatelessWidget {
+class TextSelectionPopup extends StatelessWidget {
   static const double width = 320;
 
   final Rect region;
@@ -14,7 +14,7 @@ class PdfSelectionPopup extends StatelessWidget {
   final VoidCallback? onCopy;
   final Function(Color)? onHighlight;
 
-  const PdfSelectionPopup({
+  const TextSelectionPopup({
     super.key,
     required this.region,
     required this.selectedText,

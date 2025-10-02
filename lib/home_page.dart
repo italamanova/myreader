@@ -47,6 +47,28 @@ class _HomePageState extends State<HomePage> {
     final pickedFile = File(result.files.single.path!);
     final folder = await getOrCreatePdfFolder();
     final newPath = '${folder.path}/${pickedFile.uri.pathSegments.last}';
+    final newFile = File(newPath);
+
+    if (await newFile.exists()) {
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('File already exists'),
+          content: Text('A file named "${pickedFile.uri.pathSegments.last}" already exists in your library.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+
     await pickedFile.copy(newPath);
 
     setState(() {
@@ -88,6 +110,39 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 },
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Delete file'),
+                        content: Text('Do you really want to delete "$name"?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await file.delete();
+                      setState(() {
+                        _pdfs = listPdfFiles(); // refresh the list
+                      });
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Deleted "$name"')),
+                      );
+                    }
+                  },
+                ),
               );
             },
           );
