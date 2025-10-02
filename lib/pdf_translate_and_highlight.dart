@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -23,7 +22,6 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
   late final PdfViewerController _controller;
   late final TranslationService _translator;
 
-  Uint8List? _bytes;
   OverlayEntry? _popup;
   String _chosenLang = 'uk'; // default target language
   String? _lastTranslation;
@@ -35,7 +33,6 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
     final apiKey = widget.apiKey ?? dotenv.env['DEEPL_API_KEY']!;
     _translator = DeepLTranslationService(apiKey);
     _controller = PdfViewerController();
-    _bytes = widget.file.readAsBytesSync();
   }
 
   @override
@@ -109,7 +106,7 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
           if (lines != null && lines.isNotEmpty) {
             final ann = HighlightAnnotation(textBoundsCollection: lines)
               ..color = color
-              ..opacity = 0.7;
+              ..opacity = 1.0;
             _controller.addAnnotation(ann);
           }
         },
@@ -118,19 +115,13 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
     overlay.insert(_popup!);
   }
 
-  Future<void> _savePdfWithAnnotations() async {
+  Future<void> _autoSave() async {
     try {
-      final annotatedBytes = await _controller.saveDocument(
-        flattenOption: PdfFlattenOption.none,
-      );
-
-      await widget.file.writeAsBytes(annotatedBytes, flush: true);
+      final bytes = await _controller.saveDocument(flattenOption: PdfFlattenOption.none);
+      await widget.file.writeAsBytes(bytes, flush: true);
+      print('Auto-saved annotations to ${widget.file.path}');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save the file: $e')),
-        );
-      }
+      print('Auto-save failed: $e');
     }
   }
 
@@ -140,14 +131,14 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
       appBar: AppBar(
         title: const Text('Book reader'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _savePdfWithAnnotations,
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.save),
+          //   onPressed: _savePdfWithAnnotations,
+          // ),
         ],
       ),
       body: SfPdfViewer.memory(
-        _bytes!,
+        widget.file.readAsBytesSync(),
         key: _viewerKey,
         controller: _controller,
         canShowTextSelectionMenu: false, // we supply our own popup
@@ -159,6 +150,9 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
             _showPopup(context, details);
           }
         },
+        onAnnotationAdded: (_) => _autoSave(),
+        onAnnotationRemoved: (_) => _autoSave(),
+        onAnnotationEdited: (_) => _autoSave(),
       ),
     );
   }

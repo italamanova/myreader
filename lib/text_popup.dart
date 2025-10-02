@@ -55,10 +55,9 @@ class TextSelectionPopup extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     for (final c in [
-                      Colors.yellow,
-                      Colors.cyan,
+                      Colors.yellowAccent,
+                      Colors.lightGreenAccent,
                       Colors.pinkAccent,
-                      Colors.lime,
                     ])
                       InkWell(
                         child: CircleAvatar(radius: 12, backgroundColor: c),
