@@ -44,6 +44,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   path_provider: ^2.0.17
   shared_preferences: ^2.2.2
+  epub_view: ^3.2.0
 
 dev_dependencies:
   flutter_test:
