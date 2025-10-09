@@ -117,6 +117,26 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
             _showPopup(context, d);
           }
         },
+        onAnnotationSelected: (details) async {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Delete annotation?'),
+              content: const Text('Do you want to remove this highlight?'),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Remove', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            ),
+          );
+
+          if (confirm == true) {
+            _controller.removeAnnotation(details);
+          }
+        },
         onAnnotationAdded: (_) => _autoSave(),
         onAnnotationRemoved: (_) => _autoSave(),
         onAnnotationEdited: (_) => _autoSave(),
