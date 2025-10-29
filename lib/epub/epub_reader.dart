@@ -12,13 +12,12 @@ class EpubReaderPage extends StatefulWidget {
 }
 
 class _EpubReaderPageState extends State<EpubReaderPage> {
-  late EpubController _epubController;
+  late final EpubController _epubController;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize controller with file
+    debugPrint('EpubReaderPage: initState - opening ${widget.filePath}');
     _epubController = EpubController(
       document: EpubDocument.openFile(File(widget.filePath)),
     );
@@ -26,51 +25,37 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
 
   @override
   void dispose() {
+    debugPrint('EpubReaderPage: dispose - disposing controller');
     _epubController.dispose();
     super.dispose();
   }
 
-  void _translateWord(String word) async {
-    // Here you can call your translation logic, API, etc.
-    // For demo, just show a dialog with the "translation"
+  void _translateWord(String word) {
+    debugPrint('Translate requested for: "$word"');
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text("Translation"),
-        content: Text("Translated: $word"),
+        title: const Text('Translation'),
+        content: Text('Translated: $word'),
       ),
     );
+  }
+
+  String _stripHtml(String html) {
+    return html.replaceAll(RegExp(r'<[^>]*>'), '');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("EPUB Reader")),
-      // body: EpubView(
-      //   controller: _epubController,
-      //   onDocumentLoaded: (_) {
-      //     debugPrint("EPUB loaded");
-      //   },
-      //   onExternalLinkPressed: (url) {
-      //     debugPrint("External link: $url");
-      //   },
-      //   // Capture text taps
-      //   builders: EpubViewBuilders<DefaultBuilderOptions>(
-      //     options: const DefaultBuilderOptions(),
-      //     chapterContentBuilder: (context, chapter, textStyle) {
-      //       return SelectableText(
-      //         chapter.HtmlContent ?? '',
-      //         style: textStyle,
-      //         onSelectionChanged: (selection, cause) {
-      //           if (selection != null && selection.text.isNotEmpty) {
-      //             // When user selects a word, translate it
-      //             _translateWord(selection.text);
-      //           }
-      //         },
-      //       );
-      //     },
-      //   ),
-      // ),
+      appBar: AppBar(title: const Text('EPUB Reader')),
+      body: EpubView(
+        builders: EpubViewBuilders<DefaultBuilderOptions>(
+          options: const DefaultBuilderOptions(),
+          chapterDividerBuilder: (_) => const Divider(),
+        ),
+        controller: _epubController,
+      ),
     );
   }
 }

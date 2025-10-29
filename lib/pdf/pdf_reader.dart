@@ -2,23 +2,22 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../translation_service.dart';
 import 'text_popup.dart';
 
-class PdfTranslateAndHighlight extends StatefulWidget {
-  const PdfTranslateAndHighlight({super.key, this.apiKey, required this.file});
+class PdfReaderPage extends StatefulWidget {
+  const PdfReaderPage({super.key, this.apiKey, required this.filePath});
 
   final String? apiKey;
-  final File file;
+  final File filePath;
 
   @override
-  State<PdfTranslateAndHighlight> createState() =>
-      _PdfTranslateAndHighlightState();
+  State<PdfReaderPage> createState() =>
+      _PdfReaderPageState();
 }
 
-class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
+class _PdfReaderPageState extends State<PdfReaderPage> {
   final _viewerKey = GlobalKey<SfPdfViewerState>();
   late final PdfViewerController _controller;
   late final TranslationService _translator;
@@ -50,12 +49,12 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
   // Save & load last page position
   Future<void> _saveLastPage(int page) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('lastPage_${widget.file.path}', page);
+    await prefs.setInt('lastPage_${widget.filePath.path}', page);
   }
 
   Future<int?> _loadLastPage() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('lastPage_${widget.file.path}');
+    return prefs.getInt('lastPage_${widget.filePath.path}');
   }
 
   // Auto-save annotations
@@ -63,8 +62,8 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
     try {
       final bytes =
       await _controller.saveDocument(flattenOption: PdfFlattenOption.none);
-      await widget.file.writeAsBytes(bytes, flush: true);
-      debugPrint('Auto-saved to ${widget.file.path}');
+      await widget.filePath.writeAsBytes(bytes, flush: true);
+      debugPrint('Auto-saved to ${widget.filePath.path}');
     } catch (e) {
       debugPrint('Auto-save failed: $e');
     }
@@ -105,7 +104,7 @@ class _PdfTranslateAndHighlightState extends State<PdfTranslateAndHighlight> {
     return Scaffold(
       appBar: AppBar(title: const Text('Book Reader')),
       body: SfPdfViewer.file(
-        widget.file,
+        widget.filePath,
         key: _viewerKey,
         controller: _controller,
         canShowTextSelectionMenu: false,
