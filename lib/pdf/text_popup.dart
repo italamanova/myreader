@@ -62,146 +62,161 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
   @override
   Widget build(BuildContext context) {
     final top = widget.region.top - 200;
-    final double popup_width = 320;
+
+    const double popupWidth = 320;
+    const double margin = 12;
+
+    final r = widget.region;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // **ADJUSTED**: anchor horizontally to selection center
+    double left = r.center.dx - popupWidth / 2;
+
+    // **ADJUSTED**: clamp popup inside screen
+    left = left.clamp(margin, screenWidth - popupWidth - margin);
+
+    final double topCandidate = r.top - 200;
+
     return Positioned(
-      left: widget.region.left,
-      top: top < 0 ? widget.region.bottom + 20 : top,
+      left: left,
+      top: topCandidate < 0 ? r.bottom + 20 : topCandidate,
       child: Material(
         elevation: 8,
         borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
-        child: Container(
-          width: popup_width,
-          color: Theme.of(context).colorScheme.surface,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // --- Header bar ---
-              Container(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-
-                          IconButton(
-                            icon: const Icon(
-                              Icons.circle,
-                              color: Colors.yellowAccent,
-                            ),
-                            tooltip: 'Highlight yellow',
-                            onPressed: () => _highlight(Colors.yellowAccent),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.circle,
-                              color: Colors.lightGreenAccent,
-                            ),
-                            tooltip: 'Highlight green',
-                            onPressed: () =>
-                                _highlight(Colors.lightGreenAccent),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.circle,
-                              color: Colors.pinkAccent,
-                            ),
-                            tooltip: 'Highlight pink',
-                            onPressed: () => _highlight(Colors.pinkAccent),
-                          ),
-
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.copy),
-                      tooltip: 'Copy text',
-                      onPressed: () => Clipboard.setData(
-                        ClipboardData(text: widget.selectedText),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: widget.onClose,
-                      tooltip: 'Close',
-                    ),
-                  ],
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 10,
-                ),
-                child: Row(
-                  children: [
-                    DropdownMenu<String>(
-                      initialSelection: _chosenLang,
-                      onSelected: (v) => setState(() => _chosenLang = v!),
-                      dropdownMenuEntries: const [
-                        DropdownMenuEntry(value: 'sv', label: 'Swedish'),
-                        DropdownMenuEntry(value: 'en', label: 'English'),
-                        DropdownMenuEntry(value: 'uk', label: 'Ukrainian'),
-                      ],
-                      label: const Text('Language'),
-                    ),
-
-                    const Spacer(),
-
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.translate),
-                      label: const Text('Translate'),
-                      onPressed: _translate,
-                    ),
-                  ],
-                ),
-              ),
-
-              // --- Translation output or progress ---
-              if (_translating)
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else if (_translation != null)
-                Padding(
+        child: SizedBox(
+          width: popupWidth,
+          child: Container(
+            width: popupWidth,
+            color: Theme.of(context).colorScheme.surface,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // --- Header bar ---
+                Container(
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12.0,
-                    vertical: 4.0,
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   child: Row(
                     children: [
-                      const SizedBox(height: 10),
-                      Container(
-                        width: popup_width - 24,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade400),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.circle,
+                                color: Colors.yellowAccent,
+                              ),
+                              tooltip: 'Highlight yellow',
+                              onPressed: () => _highlight(Colors.yellowAccent),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.circle,
+                                color: Colors.lightGreenAccent,
+                              ),
+                              tooltip: 'Highlight green',
+                              onPressed: () =>
+                                  _highlight(Colors.lightGreenAccent),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.circle,
+                                color: Colors.pinkAccent,
+                              ),
+                              tooltip: 'Highlight pink',
+                              onPressed: () => _highlight(Colors.pinkAccent),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          _translation!,
-                          textAlign: TextAlign.justify,
-                          style: const TextStyle(color: Colors.black87),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        tooltip: 'Copy text',
+                        onPressed: () => Clipboard.setData(
+                          ClipboardData(text: widget.selectedText),
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: widget.onClose,
+                        tooltip: 'Close',
                       ),
                     ],
                   ),
                 ),
-            ],
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12.0,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      DropdownMenu<String>(
+                        initialSelection: _chosenLang,
+                        onSelected: (v) => setState(() => _chosenLang = v!),
+                        dropdownMenuEntries: const [
+                          DropdownMenuEntry(value: 'sv', label: 'Swedish'),
+                          DropdownMenuEntry(value: 'en', label: 'English'),
+                          DropdownMenuEntry(value: 'uk', label: 'Ukrainian'),
+                        ],
+                        label: const Text('Language'),
+                      ),
+
+                      const Spacer(),
+
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.translate),
+                        label: const Text('Translate'),
+                        onPressed: _translate,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // --- Translation output or progress ---
+                if (_translating)
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else if (_translation != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12.0,
+                      vertical: 4.0,
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(height: 10),
+                        Container(
+                          width: popupWidth - 24,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade400),
+                          ),
+                          child: Text(
+                            _translation!,
+                            textAlign: TextAlign.justify,
+                            style: const TextStyle(color: Colors.black87),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

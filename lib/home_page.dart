@@ -7,7 +7,8 @@ import 'epub/epub_reader.dart';
 
 Future<Directory> getOrCreateBooksFolder() async {
   final dir = await getApplicationDocumentsDirectory();
-  final booksDir = Directory('${dir.path}/MyBooks');
+  final Directory booksDir;
+  booksDir = Directory('${dir.path}/MyBooks');
   if (!await booksDir.exists()) {
     await booksDir.create(recursive: true);
   }

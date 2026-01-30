@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:epub_view/epub_view.dart';
+import '../translation_service.dart';
 
 class EpubReaderPage extends StatefulWidget {
   final String filePath;
-
-  const EpubReaderPage({super.key, required this.filePath});
+  final String? apiKey;
+  const EpubReaderPage({super.key, this.apiKey, required this.filePath});
 
   @override
   State<EpubReaderPage> createState() => _EpubReaderPageState();
@@ -14,13 +16,16 @@ class EpubReaderPage extends StatefulWidget {
 class _EpubReaderPageState extends State<EpubReaderPage> {
   late final EpubController _epubController;
 
+  late final TranslationService _translator;
+
   @override
   void initState() {
     super.initState();
-    debugPrint('EpubReaderPage: initState - opening ${widget.filePath}');
     _epubController = EpubController(
       document: EpubDocument.openFile(File(widget.filePath)),
     );
+    final apiKey = widget.apiKey ?? dotenv.env['DEEPL_API_KEY']!;
+    _translator = DeepLTranslationService(apiKey);
   }
 
   @override
