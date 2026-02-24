@@ -23,12 +23,16 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   late final TranslationService _translator;
   OverlayEntry? _popup;
 
+  String _targetLang = 'uk';
+
   @override
   void initState() {
     super.initState();
     _controller = PdfViewerController();
     final apiKey = widget.apiKey ?? dotenv.env['DEEPL_API_KEY']!;
     _translator = DeepLTranslationService(apiKey);
+
+    _loadTargetLanguage();
 
     // Restore last page
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -84,6 +88,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
       builder: (_) => TextSelectionPopup(
         region: region,
         selectedText: d.selectedText ?? '',
+        targetLang: _targetLang,
         translator: _translator,
         controller: _controller,
         getSelectedTextLines: () =>
@@ -98,11 +103,62 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     overlay.insert(_popup!);
   }
 
-  // Build
+  Future<void> _loadTargetLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('targetLang');
+    if (saved != null && saved.isNotEmpty) {
+      setState(() => _targetLang = saved);
+    }
+  }
+
+  Future<void> _saveTargetLanguage(String lang) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('targetLang', lang);
+  }
+
+  String _langLabel(String code) {
+    switch (code) {
+      case 'sv':
+        return 'Swedish';
+      case 'en':
+        return 'English';
+      case 'uk':
+        return 'Ukrainian';
+      default:
+        return code.toUpperCase();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Book Reader')),
+      appBar: AppBar(title: const Text('Book Reader'),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Center(
+            child: Text(
+              _langLabel(_targetLang),
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ),
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'Translation language',
+          icon: const Icon(Icons.translate),
+          initialValue: _targetLang,
+          onSelected: (lang) {
+            setState(() => _targetLang = lang);
+            _saveTargetLanguage(lang);
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(value: 'sv', child: Text('Swedish (sv)')),
+            PopupMenuItem(value: 'en', child: Text('English (en)')),
+            PopupMenuItem(value: 'uk', child: Text('Ukrainian (uk)')),
+          ],
+        ),
+      ],
+      ),
       body: SfPdfViewer.file(
         widget.filePath,
         key: _viewerKey,

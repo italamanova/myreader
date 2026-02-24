@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../translation_service.dart';
 
@@ -9,6 +8,7 @@ class TextSelectionPopup extends StatefulWidget {
     super.key,
     required this.region,
     required this.selectedText,
+    required this.targetLang,
     required this.translator,
     required this.controller,
     required this.getSelectedTextLines,
@@ -17,6 +17,7 @@ class TextSelectionPopup extends StatefulWidget {
 
   final Rect region;
   final String selectedText;
+  final String targetLang;
   final TranslationService translator;
   final PdfViewerController controller;
   final List<PdfTextLine> Function() getSelectedTextLines;
@@ -27,7 +28,6 @@ class TextSelectionPopup extends StatefulWidget {
 }
 
 class _TextSelectionPopupState extends State<TextSelectionPopup> {
-  String _chosenLang = 'uk'; // default language
   bool _translating = false;
   String? _translation;
 
@@ -38,7 +38,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
     try {
       final result = await widget.translator.translate(
         text: widget.selectedText.trim(),
-        targetLang: _chosenLang,
+        targetLang: widget.targetLang,
       );
       setState(() => _translation = result);
     } catch (e) {
@@ -159,19 +159,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                   ),
                   child: Row(
                     children: [
-                      DropdownMenu<String>(
-                        initialSelection: _chosenLang,
-                        onSelected: (v) => setState(() => _chosenLang = v!),
-                        dropdownMenuEntries: const [
-                          DropdownMenuEntry(value: 'sv', label: 'Swedish'),
-                          DropdownMenuEntry(value: 'en', label: 'English'),
-                          DropdownMenuEntry(value: 'uk', label: 'Ukrainian'),
-                        ],
-                        label: const Text('Language'),
-                      ),
-
                       const Spacer(),
-
                       ElevatedButton.icon(
                         icon: const Icon(Icons.translate),
                         label: const Text('Translate'),
