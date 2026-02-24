@@ -13,8 +13,7 @@ class PdfReaderPage extends StatefulWidget {
   final File filePath;
 
   @override
-  State<PdfReaderPage> createState() =>
-      _PdfReaderPageState();
+  State<PdfReaderPage> createState() => _PdfReaderPageState();
 }
 
 class _PdfReaderPageState extends State<PdfReaderPage> {
@@ -64,8 +63,9 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   // Auto-save annotations
   Future<void> _autoSave() async {
     try {
-      final bytes =
-      await _controller.saveDocument(flattenOption: PdfFlattenOption.none);
+      final bytes = await _controller.saveDocument(
+        flattenOption: PdfFlattenOption.none,
+      );
       await widget.filePath.writeAsBytes(bytes, flush: true);
       debugPrint('Auto-saved to ${widget.filePath.path}');
     } catch (e) {
@@ -92,7 +92,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
         translator: _translator,
         controller: _controller,
         getSelectedTextLines: () =>
-        _viewerKey.currentState?.getSelectedTextLines() ?? [],
+            _viewerKey.currentState?.getSelectedTextLines() ?? [],
         onClose: () {
           _controller.clearSelection();
           _hidePopup();
@@ -132,32 +132,88 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Book Reader'),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Center(
-            child: Text(
-              _langLabel(_targetLang),
-              style: Theme.of(context).textTheme.labelLarge,
+      appBar: AppBar(
+        title: const Text('Book Reader'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 30),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'TO',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<String>(
+                  tooltip: 'Translation language',
+                  initialValue: _targetLang,
+                  position: PopupMenuPosition.under,
+                  onSelected: (lang) {
+                    setState(() => _targetLang = lang);
+                    _saveTargetLanguage(lang);
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'sv',
+                      child: Text(
+                        'Swedish',
+                        style: const TextStyle(
+                          fontSize: 18, // ✅ same size
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'en',
+                      child: Text(
+                        'English',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'uk',
+                      child: Text(
+                        'Ukrainian',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                  child: FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFE0B2),
+                      foregroundColor: const Color(0xFFE65100),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shape: ContinuousRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    onPressed: null,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _langLabel(_targetLang),
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        const Icon(Icons.arrow_drop_down),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        PopupMenuButton<String>(
-          tooltip: 'Translation language',
-          icon: const Icon(Icons.translate),
-          initialValue: _targetLang,
-          onSelected: (lang) {
-            setState(() => _targetLang = lang);
-            _saveTargetLanguage(lang);
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem(value: 'sv', child: Text('Swedish (sv)')),
-            PopupMenuItem(value: 'en', child: Text('English (en)')),
-            PopupMenuItem(value: 'uk', child: Text('Ukrainian (uk)')),
-          ],
-        ),
-      ],
+        ],
       ),
       body: SfPdfViewer.file(
         widget.filePath,
@@ -179,10 +235,16 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
               title: const Text('Delete annotation?'),
               content: const Text('Do you want to remove this highlight?'),
               actions: [
-                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Cancel'),
+                ),
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text('Remove', style: TextStyle(color: Colors.red)),
+                  child: const Text(
+                    'Remove',
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
               ],
             ),
