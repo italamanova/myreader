@@ -30,179 +30,209 @@ class TextSelectionPopup extends StatefulWidget {
 class _TextSelectionPopupState extends State<TextSelectionPopup> {
   bool _translating = false;
   String? _translation;
+  String? _lastKey; // prevents re-calling API for same text/lang
 
-  // Translation
-  Future<void> _translate() async {
-    if (widget.selectedText.trim().isEmpty) return;
-    setState(() => _translating = true);
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _translateIfNeeded());
+  }
+
+  @override
+  void didUpdateWidget(covariant TextSelectionPopup oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedText != widget.selectedText ||
+        oldWidget.targetLang != widget.targetLang) {
+      _translateIfNeeded();
+    }
+  }
+
+  Future<void> _translateIfNeeded() async {
+    final text = widget.selectedText.trim();
+    if (text.isEmpty) return;
+
+    final key = '${widget.targetLang}::$text';
+    if (key == _lastKey) return;
+    _lastKey = key;
+
+    if (!mounted) return;
+    setState(() {
+      _translating = true;
+      _translation = null;
+    });
+
     try {
       final result = await widget.translator.translate(
-        text: widget.selectedText.trim(),
+        text: text,
         targetLang: widget.targetLang,
       );
+      if (!mounted) return;
       setState(() => _translation = result);
-    } catch (e) {
-      setState(() => _translation = 'Translation failed: $e');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _translation = 'Something went wrong');
     } finally {
+      if (!mounted) return;
       setState(() => _translating = false);
     }
   }
 
-  // Highlighting
   void _highlight(Color color) {
     final lines = widget.getSelectedTextLines();
-    if (lines.isNotEmpty) {
-      final ann = HighlightAnnotation(textBoundsCollection: lines)
-        ..color = color
-        ..opacity = 1.0;
-      widget.controller.addAnnotation(ann);
-    }
+    if (lines.isEmpty) return;
+
+    final ann = HighlightAnnotation(textBoundsCollection: lines)
+      ..color = color
+      ..opacity = 1.0;
+
+    widget.controller.addAnnotation(ann);
   }
 
   @override
   Widget build(BuildContext context) {
-    final top = widget.region.top - 200;
-
     const double popupWidth = 320;
     const double margin = 12;
 
     final r = widget.region;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final media = MediaQuery.of(context);
+    final screenWidth = media.size.width;
 
-    // **ADJUSTED**: anchor horizontally to selection center
     double left = r.center.dx - popupWidth / 2;
-
-    // **ADJUSTED**: clamp popup inside screen
     left = left.clamp(margin, screenWidth - popupWidth - margin);
 
-    final double topCandidate = r.top - 200;
+    // Place above if possible, otherwise below
+    final double preferredTop = r.top - 180;
+    final double top = preferredTop < media.padding.top + margin
+        ? r.bottom + 14
+        : preferredTop;
+
+    final cs = Theme.of(context).colorScheme;
+
+    Widget iconChip({
+      required IconData icon,
+      required Color iconColor,
+      required VoidCallback onTap,
+    }) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: cs.outlineVariant),
+          ),
+          child: Icon(icon, size: 18, color: iconColor),
+        ),
+      );
+    }
 
     return Positioned(
       left: left,
-      top: topCandidate < 0 ? r.bottom + 20 : topCandidate,
+      top: top,
       child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          width: popupWidth,
+        color: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: popupWidth),
           child: Container(
-            width: popupWidth,
-            color: Theme.of(context).colorScheme.surface,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: cs.outlineVariant),
+              boxShadow: const [
+                BoxShadow(
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                  color: Colors.black26,
+                )
+              ],
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // --- Header bar ---
-                Container(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.circle,
-                                color: Colors.yellowAccent,
-                              ),
-                              tooltip: 'Highlight yellow',
-                              onPressed: () => _highlight(Colors.yellowAccent),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.circle,
-                                color: Colors.lightGreenAccent,
-                              ),
-                              tooltip: 'Highlight green',
-                              onPressed: () =>
-                                  _highlight(Colors.lightGreenAccent),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.circle,
-                                color: Colors.pinkAccent,
-                              ),
-                              tooltip: 'Highlight pink',
-                              onPressed: () => _highlight(Colors.pinkAccent),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.copy),
-                        tooltip: 'Copy text',
-                        onPressed: () => Clipboard.setData(
-                          ClipboardData(text: widget.selectedText),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: widget.onClose,
-                        tooltip: 'Close',
-                      ),
-                    ],
-                  ),
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12.0,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      const Spacer(),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.translate),
-                        label: const Text('Translate'),
-                        onPressed: _translate,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // --- Translation output or progress ---
-                if (_translating)
-                  const Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                else if (_translation != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12.0,
-                      vertical: 4.0,
-                    ),
-                    child: Row(
+                // Row of minimal buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
                       children: [
-                        const SizedBox(height: 10),
-                        Container(
-                          width: popupWidth - 24,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade400),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.circle,
+                            color: Colors.yellowAccent,
                           ),
-                          child: Text(
-                            _translation!,
-                            textAlign: TextAlign.justify,
-                            style: const TextStyle(color: Colors.black87),
+                          tooltip: 'Highlight yellow',
+                          onPressed: () => _highlight(Colors.yellowAccent),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.circle,
+                            color: Colors.lightGreenAccent,
                           ),
+                          tooltip: 'Highlight green',
+                          onPressed: () =>
+                              _highlight(Colors.lightGreenAccent),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.circle,
+                            color: Colors.pinkAccent,
+                          ),
+                          tooltip: 'Highlight pink',
+                          onPressed: () => _highlight(Colors.pinkAccent),
                         ),
                       ],
                     ),
+                    Row(
+                      children: [
+                        iconChip(
+                          icon: Icons.copy,
+                          iconColor: cs.onSurfaceVariant,
+                          onTap: () => Clipboard.setData(
+                            ClipboardData(text: widget.selectedText),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        iconChip(
+                          icon: Icons.close,
+                          iconColor: cs.onSurfaceVariant,
+                          onTap: widget.onClose,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                // Translation area only
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: cs.outlineVariant),
                   ),
+                  child: _translating
+                      ? const SizedBox(
+                    height: 18,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                      : Text(
+                    (_translation ?? '').trim(),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
               ],
             ),
           ),

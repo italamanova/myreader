@@ -141,7 +141,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'TO',
+                  'TRANSLATE TO',
                   style: Theme.of(
                     context,
                   ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
