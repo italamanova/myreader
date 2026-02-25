@@ -21,8 +21,9 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   late final PdfViewerController _controller;
   late final TranslationService _translator;
   OverlayEntry? _popup;
-
   String _targetLang = 'uk';
+  int _currentPage = 1;
+  int _totalPages = 0;
 
   @override
   void initState() {
@@ -133,7 +134,31 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Book Reader'),
+        centerTitle: false,
+        title: Text(
+          widget.filePath.path
+              .split('/')
+              .last
+              .replaceAll('.pdf', ''),
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+
+        // 📄 Page count centered
+        flexibleSpace: SafeArea(
+          child: Center(
+            child: IgnorePointer(
+              ignoring: true, // prevents blocking buttons
+              child: Text(
+                '$_currentPage / $_totalPages',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 30),
@@ -141,7 +166,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'TRANSLATE TO',
+                  'Translate to',
                   style: Theme.of(
                     context,
                   ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
@@ -161,7 +186,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
                       child: Text(
                         'Swedish',
                         style: const TextStyle(
-                          fontSize: 18, // ✅ same size
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -220,7 +245,19 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
         key: _viewerKey,
         controller: _controller,
         canShowTextSelectionMenu: false,
-        onPageChanged: (d) => _saveLastPage(d.newPageNumber),
+        onDocumentLoaded: (d) {
+          setState(() {
+            _totalPages = d.document.pages.count;
+          });
+        },
+
+        onPageChanged: (d) {
+          setState(() {
+            _currentPage = d.newPageNumber;
+          });
+          _saveLastPage(d.newPageNumber);
+        },
+
         onTextSelectionChanged: (d) {
           if (d.selectedText == null || d.globalSelectedRegion == null) {
             _hidePopup();
@@ -228,6 +265,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
             _showPopup(context, d);
           }
         },
+
         onAnnotationSelected: (details) async {
           final confirm = await showDialog<bool>(
             context: context,
@@ -249,7 +287,6 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
               ],
             ),
           );
-
           if (confirm == true) {
             _controller.removeAnnotation(details);
           }
