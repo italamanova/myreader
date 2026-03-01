@@ -68,13 +68,11 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
         flattenOption: PdfFlattenOption.none,
       );
       await widget.filePath.writeAsBytes(bytes, flush: true);
-      debugPrint('Auto-saved to ${widget.filePath.path}');
     } catch (e) {
       debugPrint('Auto-save failed: $e');
     }
   }
 
-  // Popup management
   void _hidePopup() {
     _popup?.remove();
     _popup = null;
