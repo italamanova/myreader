@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:myreader/words/isar_db.dart';
 import 'home_page.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
   final apiKey = dotenv.env['DEEPL_API_KEY']!;
   WidgetsFlutterBinding.ensureInitialized();
+  await IsarDb.open();
   runApp(PdfReaderApp(apiKey: apiKey));
 }
 
