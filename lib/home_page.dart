@@ -1,9 +1,11 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'pdf/pdf_reader.dart';
+
 import 'epub/epub_reader.dart';
+import 'pdf/pdf_reader.dart';
 
 Future<Directory> getOrCreateBooksFolder() async {
   final dir = await getApplicationDocumentsDirectory();
@@ -15,7 +17,6 @@ Future<Directory> getOrCreateBooksFolder() async {
   return booksDir;
 }
 
-
 Future<List<FileSystemEntity>> listBookFiles() async {
   final dir = await getOrCreateBooksFolder();
   if (!await dir.exists()) return <FileSystemEntity>[];
@@ -25,6 +26,7 @@ Future<List<FileSystemEntity>> listBookFiles() async {
     return name.endsWith('.pdf') || name.endsWith('.epub');
   }).toList();
 }
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -41,14 +43,16 @@ class _HomePageState extends State<HomePage> {
     _books = listBookFiles();
   }
 
-  void _refresh()  {
-    setState(() { _books = listBookFiles(); });
+  void _refresh() {
+    setState(() {
+      _books = listBookFiles();
+    });
   }
 
   Future<void> _pickAndSave() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'epub'], 
+      allowedExtensions: const ['pdf', 'epub'],
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
@@ -57,7 +61,7 @@ class _HomePageState extends State<HomePage> {
     final bytes = file.bytes;
     if (bytes == null) return;
 
-    final destDir = await getOrCreateBooksFolder(); 
+    final destDir = await getOrCreateBooksFolder();
     final destPath = '${destDir.path}/${file.name}';
     final out = File(destPath);
     await out.writeAsBytes(bytes, flush: true);
@@ -76,11 +80,9 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     } else if (lower.endsWith('.epub')) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => EpubReaderPage(filePath: path), 
-        ),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => EpubReaderPage(filePath: path)));
     }
   }
 
@@ -98,7 +100,7 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: FutureBuilder<List<FileSystemEntity>>(
-        future: _books, 
+        future: _books,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -106,7 +108,7 @@ class _HomePageState extends State<HomePage> {
           final files = snapshot.data!;
           if (files.isEmpty) {
             return const Center(
-              child: Text('No books yet. Tap + to add a PDF or EPUB.'), 
+              child: Text('No books yet. Tap + to add a PDF or EPUB.'),
             );
           }
           return ListView.separated(
@@ -115,13 +117,13 @@ class _HomePageState extends State<HomePage> {
             itemBuilder: (context, index) {
               final f = files[index];
               final name = f.path.split(Platform.pathSeparator).last;
-              final isPdf = name.toLowerCase().endsWith('.pdf'); 
+              final isPdf = name.toLowerCase().endsWith('.pdf');
 
               return ListTile(
-                leading: Icon(isPdf ? Icons.picture_as_pdf : Icons.menu_book), 
+                leading: Icon(isPdf ? Icons.picture_as_pdf : Icons.menu_book),
                 title: Text(name),
                 subtitle: Text(f.path),
-                onTap: () => _openFile(f), 
+                onTap: () => _openFile(f),
                 trailing: IconButton(
                   tooltip: 'Delete',
                   icon: const Icon(Icons.delete_outline),
@@ -139,7 +141,7 @@ class _HomePageState extends State<HomePage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _pickAndSave, 
+        onPressed: _pickAndSave,
         child: const Icon(Icons.add),
       ),
     );

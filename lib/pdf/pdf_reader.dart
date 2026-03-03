@@ -1,9 +1,12 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+
 import '../translation_service.dart';
+import '../words/word_repository.dart';
 import 'text_popup.dart';
 
 class PdfReaderPage extends StatefulWidget {
@@ -20,6 +23,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   final _viewerKey = GlobalKey<SfPdfViewerState>();
   late final PdfViewerController _controller;
   late final TranslationService _translator;
+  late final WordsRepository _wordsRepository;
   OverlayEntry? _popup;
   String _targetLang = 'uk';
   int _currentPage = 1;
@@ -31,6 +35,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     _controller = PdfViewerController();
     final apiKey = widget.apiKey ?? dotenv.env['DEEPL_API_KEY']!;
     _translator = DeepLTranslationService(apiKey);
+    _wordsRepository = WordsRepository();
 
     _loadTargetLanguage();
 
@@ -96,6 +101,22 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
           _controller.clearSelection();
           _hidePopup();
         },
+
+        onSaveWord: (word, translation) async {
+          await _wordsRepository.addWord(
+            word: word,
+            translation: translation,
+            bookPath: widget.filePath.path,
+            pageNumber: _currentPage,
+          );
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Saved: "$word"'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        },
       ),
     );
 
@@ -134,10 +155,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
       appBar: AppBar(
         centerTitle: false,
         title: Text(
-          widget.filePath.path
-              .split('/')
-              .last
-              .replaceAll('.pdf', ''),
+          widget.filePath.path.split('/').last.replaceAll('.pdf', ''),
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.titleMedium,
         ),

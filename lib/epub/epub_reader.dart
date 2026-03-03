@@ -1,12 +1,15 @@
 import 'dart:io';
+
+import 'package:epub_view/epub_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:epub_view/epub_view.dart';
+
 import '../translation_service.dart';
 
 class EpubReaderPage extends StatefulWidget {
   final String filePath;
   final String? apiKey;
+
   const EpubReaderPage({super.key, this.apiKey, required this.filePath});
 
   @override

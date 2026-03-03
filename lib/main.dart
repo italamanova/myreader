@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:myreader/words/isar_db.dart';
+
 import 'home_page.dart';
 
 Future<void> main() async {
@@ -13,7 +14,9 @@ Future<void> main() async {
 
 class PdfReaderApp extends StatelessWidget {
   final String apiKey;
+
   const PdfReaderApp({super.key, required this.apiKey});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,5 +27,3 @@ class PdfReaderApp extends StatelessWidget {
     );
   }
 }
-
-

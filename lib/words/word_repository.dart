@@ -1,7 +1,7 @@
 import 'package:isar/isar.dart';
 
-import 'isar_db.dart';
 import 'entries/word_entry.dart';
+import 'isar_db.dart';
 
 class WordsRepository {
   Future<Isar> get _db async => IsarDb.open();
@@ -69,7 +69,9 @@ class WordsRepository {
 
   Stream<List<WordEntry>> watchAllWords() async* {
     final db = await _db;
-    yield* db.wordEntrys.where().sortByCreatedAtDesc().watch(fireImmediately: true);
+    yield* db.wordEntrys.where().sortByCreatedAtDesc().watch(
+      fireImmediately: true,
+    );
   }
 
   Future<void> deleteWord(Id id) async {

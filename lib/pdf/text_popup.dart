@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+
 import '../translation_service.dart';
 
 class TextSelectionPopup extends StatefulWidget {
@@ -13,6 +14,7 @@ class TextSelectionPopup extends StatefulWidget {
     required this.controller,
     required this.getSelectedTextLines,
     required this.onClose,
+    required this.onSaveWord,
   });
 
   final Rect region;
@@ -22,6 +24,7 @@ class TextSelectionPopup extends StatefulWidget {
   final PdfViewerController controller;
   final List<PdfTextLine> Function() getSelectedTextLines;
   final VoidCallback onClose;
+  final Future<void> Function(String word, String? translation) onSaveWord;
 
   @override
   State<TextSelectionPopup> createState() => _TextSelectionPopupState();
@@ -108,10 +111,15 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
 
     final cs = Theme.of(context).colorScheme;
 
+    final canSave =
+        !_translating &&
+        _translation != null &&
+        _translation!.trim().isNotEmpty;
+
     Widget iconChip({
       required IconData icon,
       required Color iconColor,
-      required VoidCallback onTap,
+      required VoidCallback? onTap,
     }) {
       return InkWell(
         borderRadius: BorderRadius.circular(999),
@@ -146,7 +154,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                   blurRadius: 18,
                   offset: Offset(0, 8),
                   color: Colors.black26,
-                )
+                ),
               ],
             ),
             child: Column(
@@ -172,8 +180,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                             color: Colors.lightGreenAccent,
                           ),
                           tooltip: 'Highlight green',
-                          onPressed: () =>
-                              _highlight(Colors.lightGreenAccent),
+                          onPressed: () => _highlight(Colors.lightGreenAccent),
                         ),
                         IconButton(
                           icon: const Icon(
@@ -194,7 +201,26 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                             ClipboardData(text: widget.selectedText),
                           ),
                         ),
+
                         const SizedBox(width: 8),
+
+                        Opacity(
+                          opacity: canSave ? 1.0 : 0.4,
+                          child: iconChip(
+                            icon: Icons.bookmark_add_outlined,
+                            iconColor: cs.onSurfaceVariant,
+                            onTap: canSave
+                                ? () {
+                                    final word = widget.selectedText.trim();
+                                    if (word.isEmpty) return;
+                                    widget.onSaveWord(word, _translation);
+                                  }
+                                : null,
+                          ),
+                        ),
+
+                        const SizedBox(width: 8),
+
                         iconChip(
                           icon: Icons.close,
                           iconColor: cs.onSurfaceVariant,
@@ -218,20 +244,20 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                   ),
                   child: _translating
                       ? const SizedBox(
-                    height: 18,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  )
+                          height: 18,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        )
                       : Text(
-                    (_translation ?? '').trim(),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                          (_translation ?? '').trim(),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                 ),
               ],
             ),
