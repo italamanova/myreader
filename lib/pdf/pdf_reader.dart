@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../translation_service.dart';
+import '../words/saved_words_panel.dart';
 import '../words/word_repository.dart';
 import 'text_popup.dart';
 
@@ -256,60 +257,82 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
           ),
         ],
       ),
-      body: SfPdfViewer.file(
-        widget.filePath,
-        key: _viewerKey,
-        controller: _controller,
-        canShowTextSelectionMenu: false,
-        onDocumentLoaded: (d) {
-          setState(() {
-            _totalPages = d.document.pages.count;
-          });
-        },
-
-        onPageChanged: (d) {
-          setState(() {
-            _currentPage = d.newPageNumber;
-          });
-          _saveLastPage(d.newPageNumber);
-        },
-
-        onTextSelectionChanged: (d) {
-          if (d.selectedText == null || d.globalSelectedRegion == null) {
-            _hidePopup();
-          } else {
-            _showPopup(context, d);
-          }
-        },
-
-        onAnnotationSelected: (details) async {
-          final confirm = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Delete annotation?'),
-              content: const Text('Do you want to remove this highlight?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const Text('Cancel'),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 900;
+          final pdfViewer = SfPdfViewer.file(
+            widget.filePath,
+            key: _viewerKey,
+            controller: _controller,
+            canShowTextSelectionMenu: false,
+            onDocumentLoaded: (d) {
+              setState(() {
+                _totalPages = d.document.pages.count;
+              });
+            },
+            onPageChanged: (d) {
+              setState(() {
+                _currentPage = d.newPageNumber;
+              });
+              _saveLastPage(d.newPageNumber);
+            },
+            onTextSelectionChanged: (d) {
+              if (d.selectedText == null || d.globalSelectedRegion == null) {
+                _hidePopup();
+              } else {
+                _showPopup(context, d);
+              }
+            },
+            onAnnotationSelected: (details) async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Delete annotation?'),
+                  content: const Text('Do you want to remove this highlight?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text(
+                        'Remove',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text(
-                    'Remove',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-              ],
-            ),
+              );
+              if (confirm == true) {
+                _controller.removeAnnotation(details);
+              }
+            },
+            onAnnotationAdded: (_) => _autoSave(),
+            onAnnotationRemoved: (_) => _autoSave(),
+            onAnnotationEdited: (_) => _autoSave(),
           );
-          if (confirm == true) {
-            _controller.removeAnnotation(details);
+          if (!isWide) {
+            return pdfViewer;
           }
+          return Row(
+            children: [
+              Expanded(child: pdfViewer),
+              const VerticalDivider(width: 1),
+
+              SizedBox(
+                width: 360,
+                child: SavedWordsPanel(
+                  repository: _wordsRepository,
+                  bookPath: widget.filePath.path,
+                  onJumpToPage: (pageNumber) {
+                    _controller.jumpToPage(pageNumber); // CHANGED
+                  },
+                ),
+              ),
+            ],
+          );
         },
-        onAnnotationAdded: (_) => _autoSave(),
-        onAnnotationRemoved: (_) => _autoSave(),
-        onAnnotationEdited: (_) => _autoSave(),
       ),
     );
   }
