@@ -48,6 +48,7 @@ const WordEntrySchema = CollectionSchema(
       type: IsarType.string,
     ),
   },
+
   estimateSize: _wordEntryEstimateSize,
   serialize: _wordEntrySerialize,
   deserialize: _wordEntryDeserialize,
@@ -56,10 +57,11 @@ const WordEntrySchema = CollectionSchema(
   indexes: {},
   links: {},
   embeddedSchemas: {},
+
   getId: _wordEntryGetId,
   getLinks: _wordEntryGetLinks,
   attach: _wordEntryAttach,
-  version: '3.1.0+1',
+  version: '3.3.0',
 );
 
 int _wordEntryEstimateSize(

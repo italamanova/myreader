@@ -1,5 +1,4 @@
-import 'package:isar/isar.dart';
-
+import 'package:isar_community/isar.dart';
 import 'entries/word_entry.dart';
 import 'isar_db.dart';
 

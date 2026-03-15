@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -25,10 +26,15 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   late final PdfViewerController _controller;
   late final TranslationService _translator;
   late final WordsRepository _wordsRepository;
+  final ValueNotifier<int> _currentPageNotifier = ValueNotifier<int>(1);
+
   OverlayEntry? _popup;
   String _targetLang = 'uk';
   int _currentPage = 1;
   int _totalPages = 0;
+
+  Timer? _pageSaveDebounce;
+  Timer? _pdfSaveDebounce;
 
   @override
   void initState() {
@@ -49,9 +55,27 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     });
   }
 
+  void _debouncedSaveLastPage(int page) {
+    _pageSaveDebounce?.cancel();
+    _pageSaveDebounce = Timer(const Duration(milliseconds: 700), () {
+      _saveLastPage(page);
+    });
+  }
+
+  void _scheduleAutoSave() {
+    // CHANGED: debounce full PDF writes because saveDocument() is expensive
+    _pdfSaveDebounce?.cancel();
+    _pdfSaveDebounce = Timer(const Duration(seconds: 2), () async {
+      await _autoSave();
+    });
+  }
+
   @override
   void dispose() {
+    _pageSaveDebounce?.cancel();
+    _pdfSaveDebounce?.cancel();
     _popup?.remove();
+    _currentPageNotifier.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -161,18 +185,23 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
 
-        // 📄 Page count centered
+        // Page count
         flexibleSpace: SafeArea(
           child: Center(
             child: IgnorePointer(
               ignoring: true, // prevents blocking buttons
-              child: Text(
-                '$_currentPage / $_totalPages',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
+              child: ValueListenableBuilder<int>(
+                valueListenable: _currentPageNotifier,
+                builder: (context, page, _) {
+                  return Text(
+                    '$page / $_totalPages',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  );
+                },
+              )
             ),
           ),
         ),
@@ -271,10 +300,9 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
               });
             },
             onPageChanged: (d) {
-              setState(() {
-                _currentPage = d.newPageNumber;
-              });
-              _saveLastPage(d.newPageNumber);
+              _currentPage = d.newPageNumber;
+              _currentPageNotifier.value = d.newPageNumber;
+              _debouncedSaveLastPage(d.newPageNumber);
             },
             onTextSelectionChanged: (d) {
               if (d.selectedText == null || d.globalSelectedRegion == null) {
@@ -308,9 +336,9 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
                 _controller.removeAnnotation(details);
               }
             },
-            onAnnotationAdded: (_) => _autoSave(),
-            onAnnotationRemoved: (_) => _autoSave(),
-            onAnnotationEdited: (_) => _autoSave(),
+            onAnnotationAdded: (_) => _scheduleAutoSave(),
+            onAnnotationRemoved: (_) => _scheduleAutoSave(),
+            onAnnotationEdited: (_) => _scheduleAutoSave(),
           );
           if (!isWide) {
             return pdfViewer;

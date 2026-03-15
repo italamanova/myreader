@@ -8,7 +8,7 @@ import Foundation
 import device_info_plus
 import file_picker
 import file_selector_macos
-import isar_flutter_libs
+import isar_community_flutter_libs
 import pdfx
 import shared_preferences_foundation
 import syncfusion_pdfviewer_macos

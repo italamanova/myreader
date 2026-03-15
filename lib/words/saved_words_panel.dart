@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import 'entries/word_entry.dart';
 import 'word_repository.dart';

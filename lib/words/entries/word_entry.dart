@@ -1,5 +1,4 @@
-import 'package:isar/isar.dart';
-
+import 'package:isar_community/isar.dart';
 part 'word_entry.g.dart';
 
 @collection
