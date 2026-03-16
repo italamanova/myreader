@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'epub/epub_reader.dart';
 import 'pdf/pdf_reader.dart';
+import 'words/word_cards_page.dart';
+
 
 Future<Directory> getOrCreateBooksFolder() async {
   final dir = await getApplicationDocumentsDirectory();
@@ -93,9 +95,15 @@ class _HomePageState extends State<HomePage> {
         title: const Text('My Books'),
         actions: [
           IconButton(
-            onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const WordCardsPage(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.style_outlined),
+            tooltip: 'Review words',
           ),
         ],
       ),

@@ -25,22 +25,6 @@ class WordsRepository {
         .pageNumberEqualTo(pageNumber)
         .findFirst();
 
-    // if exists - show message that this word exists
-
-    // if (existing != null) {
-    //   // CHANGED: update translation/context if newly provided
-    //   return await db.writeTxn(() async {
-    //     if (translation != null && (existing.translation == null || existing.translation!.isEmpty)) {
-    //       existing.translation = translation;
-    //     }
-    //     if (context != null && (existing.context == null || existing.context!.isEmpty)) {
-    //       existing.context = context;
-    //     }
-    //     await db.wordEntrys.put(existing);
-    //     return existing;
-    //   });
-    // }
-
     final entry = WordEntry()
       ..wordOriginal = word.trim()
       ..wordNormalized = normalized
@@ -79,20 +63,4 @@ class WordsRepository {
       await db.wordEntrys.delete(id);
     });
   }
-
-  // Future<void> markReviewed({
-  //   required Id id,
-  //   required bool correct,
-  // }) async {
-  //   final db = await _db;
-  //   final entry = await db.wordEntrys.get(id);
-  //   if (entry == null) return;
-  //
-  //   await db.writeTxn(() async {
-  //     entry.timesSeen += 1;
-  //     if (correct) entry.timesCorrect += 1;
-  //     entry.lastReviewed = DateTime.now();
-  //     await db.wordEntrys.put(entry);
-  //   });
-  // }
 }

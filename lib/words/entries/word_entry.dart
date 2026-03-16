@@ -13,13 +13,10 @@ class WordEntry {
   late String bookPath;
   late int pageNumber;
 
-  // String? context;
-
   late DateTime createdAt;
 
-  // int timesSeen = 0;
-  // int timesCorrect = 0;
-  // DateTime? lastReviewed;
+  int timesSeen = 0;
+  int timesCorrect = 0;
 
   WordEntry();
 }
