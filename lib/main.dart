@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:myreader/words/isar_db.dart';
@@ -23,7 +24,17 @@ class PdfReaderApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'My Reader',
       theme: ThemeData(useMaterial3: true),
+      scrollBehavior: MyScrollBehavior(),
       home: const HomePage(),
     );
   }
+}
+
+class MyScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+  };
 }
