@@ -13,9 +13,7 @@ class WordCardsPage extends StatelessWidget {
     final repository = WordsRepository();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Word cards'),
-      ),
+      appBar: AppBar(title: const Text('Word cards')),
       body: StreamBuilder<List<WordEntry>>(
         stream: repository.watchAllWords(),
         builder: (context, snapshot) {
@@ -30,15 +28,12 @@ class WordCardsPage extends StatelessWidget {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: Text(
-                  'No saved words yet.',
-                  textAlign: TextAlign.center,
-                ),
+                child: Text('No saved words yet.', textAlign: TextAlign.center),
               ),
             );
           }
 
-          return _WordCardsPager(words: words);
+          return _WordCardsPager(words: words, repository: repository);
         },
       ),
     );
@@ -46,9 +41,13 @@ class WordCardsPage extends StatelessWidget {
 }
 
 class _WordCardsPager extends StatefulWidget {
-  const _WordCardsPager({required this.words});
+  const _WordCardsPager({
+    required this.words,
+    required this.repository,
+  });
 
   final List<WordEntry> words;
+  final WordsRepository repository;
 
   @override
   State<_WordCardsPager> createState() => _WordCardsPagerState();
@@ -62,6 +61,52 @@ class _WordCardsPagerState extends State<_WordCardsPager> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _deleteCurrentCard() async {
+    if (widget.words.isEmpty) return;
+
+    final current = widget.words[_currentIndex];
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete word?'),
+        content: Text(
+          'Delete "${current.wordOriginal}" from saved words?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await widget.repository.deleteWord(current.id); // CHANGED: delete the current card using existing repository method
+
+    if (!mounted) return;
+
+    final nextIndex = _currentIndex >= widget.words.length - 1
+        ? (_currentIndex > 0 ? _currentIndex - 1 : 0)
+        : _currentIndex;
+
+    setState(() {
+      _currentIndex = nextIndex; // CHANGED: keep index valid after deleting the current card
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Deleted "${current.wordOriginal}"'),
+      ),
+    );
   }
 
   @override
@@ -80,7 +125,13 @@ class _WordCardsPagerState extends State<_WordCardsPager> {
           '${_currentIndex + 1} / ${widget.words.length}',
           style: Theme.of(context).textTheme.labelLarge,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        IconButton.filledTonal(
+          onPressed: _deleteCurrentCard, // CHANGED: delete the currently visible word card
+          tooltip: 'Delete word',
+          icon: const Icon(Icons.delete_outline),
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: PageView.builder(
             controller: _pageController,
@@ -93,15 +144,16 @@ class _WordCardsPagerState extends State<_WordCardsPager> {
             itemBuilder: (context, index) {
               final entry = widget.words[index];
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 12,
+                ),
                 child: _FlipWordCard(entry: entry),
               );
             },
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-        ),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 20)),
       ],
     );
   }
@@ -179,21 +231,21 @@ class _FlipWordCardState extends State<_FlipWordCard>
               ..rotateY(angle),
             child: isFrontVisible
                 ? _CardFace(
-              title: 'Word',
-              text: widget.entry.wordOriginal,
-              hint: 'Tap to see translation',
-            )
+                    title: 'Word',
+                    text: widget.entry.wordOriginal,
+                    hint: 'Tap to see translation',
+                  )
                 : Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()..rotateY(math.pi),
-              child: _CardFace(
-                title: 'Translation',
-                text: hasTranslation
-                    ? translation
-                    : 'No translation saved',
-                hint: 'Tap to go back',
-              ),
-            ),
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()..rotateY(math.pi),
+                    child: _CardFace(
+                      title: 'Translation',
+                      text: hasTranslation
+                          ? translation
+                          : 'No translation saved',
+                      hint: 'Tap to go back',
+                    ),
+                  ),
           );
         },
       ),
@@ -246,17 +298,17 @@ class _CardFace extends StatelessWidget {
             Text(
               text,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 24),
             Text(
               hint,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),
