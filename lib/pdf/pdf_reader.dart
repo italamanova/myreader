@@ -174,133 +174,178 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     }
   }
 
+  String _langShortLabel(String code) {
+    switch (code) {
+      case 'sv':
+        return 'SV';
+      case 'en':
+        return 'EN';
+      case 'uk':
+        return 'UK';
+      default:
+        return code.toUpperCase();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: Text(
-          widget.filePath.path.split('/').last.replaceAll('.pdf', ''),
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Builder(
+          builder: (context) {
+            final isSmallScreen = MediaQuery.sizeOf(context).width < 600;
 
-        // Page count
-        flexibleSpace: SafeArea(
-          child: Center(
-            child: IgnorePointer(
-              ignoring: true, // prevents blocking buttons
-              child: ValueListenableBuilder<int>(
+            if (isSmallScreen) {
+              return ValueListenableBuilder<int>(
                 valueListenable: _currentPageNotifier,
                 builder: (context, page, _) {
                   return Text(
                     '$page / $_totalPages',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   );
                 },
-              )
-            ),
-          ),
+              );
+            }
+
+            return Text(
+              widget.filePath.path.split('/').last.replaceAll('.pdf', ''),
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium,
+            );
+          },
+        ),
+        flexibleSpace: Builder(
+          builder: (context) {
+            final isSmallScreen = MediaQuery.sizeOf(context).width < 600; // CHANGED: hide centered page counter on small screens
+
+            if (isSmallScreen) {
+              return const SizedBox.shrink();
+            }
+
+            return SafeArea(
+              child: Center(
+                child: IgnorePointer(
+                  ignoring: true,
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: _currentPageNotifier,
+                    builder: (context, page, _) {
+                      return Text(
+                        '$page / $_totalPages',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12), // CHANGED: reduce excessive right spacing for a cleaner AppBar layout
-            child: PopupMenuButton<String>(
-              tooltip: 'Translation language',
-              initialValue: _targetLang,
-              position: PopupMenuPosition.under,
-              constraints: const BoxConstraints(
-                minWidth: 150,
-                maxWidth: 150,
-              ),
-              onSelected: (lang) {
-                setState(() => _targetLang = lang); // CHANGED: keep selected language visible in the AppBar pill
-                _saveTargetLanguage(lang);
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'sv',
-                  child: Row(
-                    children: [
-                      if (_targetLang == 'sv')
-                        Icon(
-                          Icons.check,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.primary,
-                        ), // CHANGED: show current selection in menu for better UX
-                      if (_targetLang == 'sv') const SizedBox(width: 8),
-                      const Text('Swedish'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'en',
-                  child: Row(
-                    children: [
-                      if (_targetLang == 'en')
-                        Icon(
-                          Icons.check,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.primary,
-                        ), // CHANGED: show current selection in menu for better UX
-                      if (_targetLang == 'en') const SizedBox(width: 8),
-                      const Text('English'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'uk',
-                  child: Row(
-                    children: [
-                      if (_targetLang == 'uk')
-                        Icon(
-                          Icons.check,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.primary,
-                        ), // CHANGED: show current selection in menu for better UX
-                      if (_targetLang == 'uk') const SizedBox(width: 8),
-                      const Text('Ukrainian'),
-                    ],
-                  ),
-                ),
-              ],
-              child: Material(
-                color: Theme.of(context).colorScheme.secondaryContainer, // CHANGED: use Material 3 semantic color for stronger contrast
-                borderRadius: BorderRadius.circular(999),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(999),
-                  onTap: null, // CHANGED: tap is handled by PopupMenuButton; InkWell is only for proper Material surface styling
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), // CHANGED: make the control easier to hit and easier to read
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.translate_rounded,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.onSecondaryContainer,
-                        ), // CHANGED: add a meaningful icon so the purpose is recognizable without extra label text
-                        const SizedBox(width: 8),
-                        Text(
-                          _langLabel(_targetLang),
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            padding: const EdgeInsets.only(right: 12),
+            child: Builder(
+              builder: (context) {
+                final isSmallScreen = MediaQuery.sizeOf(context).width < 600;
+
+                return PopupMenuButton<String>(
+                  tooltip: 'Translation language',
+                  initialValue: _targetLang,
+                  position: PopupMenuPosition.under,
+                  onSelected: (lang) {
+                    setState(() => _targetLang = lang);
+                    _saveTargetLanguage(lang);
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'sv',
+                      child: Row(
+                        children: [
+                          if (_targetLang == 'sv')
+                            Icon(
+                              Icons.check,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          if (_targetLang == 'sv') const SizedBox(width: 8),
+                          const Text('Swedish'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'en',
+                      child: Row(
+                        children: [
+                          if (_targetLang == 'en')
+                            Icon(
+                              Icons.check,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          if (_targetLang == 'en') const SizedBox(width: 8),
+                          const Text('English'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'uk',
+                      child: Row(
+                        children: [
+                          if (_targetLang == 'uk')
+                            Icon(
+                              Icons.check,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          if (_targetLang == 'uk') const SizedBox(width: 8),
+                          const Text('Ukrainian'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: Material(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 10 : 14,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.translate_rounded,
+                            size: isSmallScreen ? 16 : 18,
                             color: Theme.of(context).colorScheme.onSecondaryContainer,
-                            fontWeight: FontWeight.w600,
-                          ), // CHANGED: improve contrast and hierarchy for the selected language
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_drop_down_rounded,
-                          color: Theme.of(context).colorScheme.onSecondaryContainer,
-                        ), // CHANGED: keep dropdown affordance consistent with Material 3
-                      ],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isSmallScreen
+                                ? _langShortLabel(_targetLang)
+                                : _langLabel(_targetLang),
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            Icons.arrow_drop_down_rounded,
+                            size: isSmallScreen ? 18 : 22,
+                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
