@@ -94,16 +94,26 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('My Books'),
         actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const WordCardsPage(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: FilledButton.tonalIcon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const WordCardsPage(),
+                  ),
+                ); // CHANGED: open saved-word card review screen from Material 3 tonal button
+              },
+              icon: const Icon(Icons.style_outlined),
+              label: const Text('Review'),
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact, // CHANGED: make the button fit nicely inside AppBar
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20), // CHANGED: use a softer Material pill shape
                 ),
-              );
-            },
-            icon: const Icon(Icons.style_outlined),
-            tooltip: 'Review words',
+              ),
+            ),
           ),
         ],
       ),
