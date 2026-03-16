@@ -207,81 +207,100 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 30),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Translate to',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+            padding: const EdgeInsets.only(right: 12), // CHANGED: reduce excessive right spacing for a cleaner AppBar layout
+            child: PopupMenuButton<String>(
+              tooltip: 'Translation language',
+              initialValue: _targetLang,
+              position: PopupMenuPosition.under,
+              constraints: const BoxConstraints(
+                minWidth: 150,
+                maxWidth: 150,
+              ),
+              onSelected: (lang) {
+                setState(() => _targetLang = lang); // CHANGED: keep selected language visible in the AppBar pill
+                _saveTargetLanguage(lang);
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'sv',
+                  child: Row(
+                    children: [
+                      if (_targetLang == 'sv')
+                        Icon(
+                          Icons.check,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ), // CHANGED: show current selection in menu for better UX
+                      if (_targetLang == 'sv') const SizedBox(width: 8),
+                      const Text('Swedish'),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                PopupMenuButton<String>(
-                  tooltip: 'Translation language',
-                  initialValue: _targetLang,
-                  position: PopupMenuPosition.under,
-                  onSelected: (lang) {
-                    setState(() => _targetLang = lang);
-                    _saveTargetLanguage(lang);
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'sv',
-                      child: Text(
-                        'Swedish',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'en',
-                      child: Text(
-                        'English',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'uk',
-                      child: Text(
-                        'Ukrainian',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                  child: FilledButton.tonal(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFE0B2),
-                      foregroundColor: const Color(0xFFE65100),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      shape: ContinuousRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    onPressed: null,
+                PopupMenuItem(
+                  value: 'en',
+                  child: Row(
+                    children: [
+                      if (_targetLang == 'en')
+                        Icon(
+                          Icons.check,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ), // CHANGED: show current selection in menu for better UX
+                      if (_targetLang == 'en') const SizedBox(width: 8),
+                      const Text('English'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'uk',
+                  child: Row(
+                    children: [
+                      if (_targetLang == 'uk')
+                        Icon(
+                          Icons.check,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ), // CHANGED: show current selection in menu for better UX
+                      if (_targetLang == 'uk') const SizedBox(width: 8),
+                      const Text('Ukrainian'),
+                    ],
+                  ),
+                ),
+              ],
+              child: Material(
+                color: Theme.of(context).colorScheme.secondaryContainer, // CHANGED: use Material 3 semantic color for stronger contrast
+                borderRadius: BorderRadius.circular(999),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: null, // CHANGED: tap is handled by PopupMenuButton; InkWell is only for proper Material surface styling
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), // CHANGED: make the control easier to hit and easier to read
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(
+                          Icons.translate_rounded,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                        ), // CHANGED: add a meaningful icon so the purpose is recognizable without extra label text
+                        const SizedBox(width: 8),
                         Text(
                           _langLabel(_targetLang),
-                          style: const TextStyle(fontSize: 18),
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.w600,
+                          ), // CHANGED: improve contrast and hierarchy for the selected language
                         ),
-                        const SizedBox(width: 10),
-                        const Icon(Icons.arrow_drop_down),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_drop_down_rounded,
+                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                        ), // CHANGED: keep dropdown affordance consistent with Material 3
                       ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ],
