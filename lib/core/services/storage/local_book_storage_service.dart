@@ -39,12 +39,11 @@ class LocalBookStorageService {
   }
 
   /// Save a book file
-  static Future<String> saveBook(String fileName, List<int> bytes) async {
+  static Future<String> saveBook(File file, String fileName) async {
     try {
       final destDir = await getOrCreateBooksFolder();
       final destPath = '${destDir.path}/$fileName';
-      final file = File(destPath);
-      await file.writeAsBytes(bytes, flush: true);
+      file.copy(destPath);
       return destPath;
     } catch (e) {
       throw Exception('Failed to save book: $e');
