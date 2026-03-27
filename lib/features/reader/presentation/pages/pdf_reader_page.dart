@@ -13,7 +13,7 @@ import '../../../words/presentation/widgets/saved_words_panel.dart';
 import '../widgets/text_selection_popup.dart';
 
 /// PDF reader page with translation and annotation support
-class PdfReaderPage extends StatefulWidget {
+class PdfReaderPage extends StatefulWidget{
   const PdfReaderPage({
     super.key,
     this.apiKey,
@@ -29,7 +29,7 @@ class PdfReaderPage extends StatefulWidget {
   State<PdfReaderPage> createState() => _PdfReaderPageState();
 }
 
-class _PdfReaderPageState extends State<PdfReaderPage> {
+class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserver{
   final _viewerKey = GlobalKey<SfPdfViewerState>();
   late final PdfViewerController _controller;
   late final TranslationService _translator;
@@ -44,10 +44,12 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
 
   Timer? _pageSaveDebounce;
   Timer? _pdfSaveDebounce;
+  int? _lastSavedPage;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = PdfViewerController();
     final apiKey = widget.apiKey ?? dotenv.env['DEEPL_API_KEY']!;
     _translator = DeepLTranslationService(apiKey);
@@ -58,6 +60,9 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final lastPage = await _loadLastPage();
       if (lastPage != null) {
+        _currentPage = lastPage;
+        _currentPageNotifier.value = lastPage;
+        _lastSavedPage = lastPage;
         _controller.jumpToPage(lastPage);
       }
     });
@@ -72,13 +77,6 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     _loadTargetLanguage();
   }
 
-  void _debouncedSaveLastPage(int page) {
-    _pageSaveDebounce?.cancel();
-    _pageSaveDebounce = Timer(AppConstants.pageSaveDebounceDuration, () {
-      _saveLastPage(page);
-    });
-  }
-
   void _scheduleAutoSave() {
     _pdfSaveDebounce?.cancel();
     _pdfSaveDebounce = Timer(AppConstants.pdfSaveDebounceDuration, () async {
@@ -88,12 +86,57 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _flushLastPageSave();
     _pageSaveDebounce?.cancel();
     _pdfSaveDebounce?.cancel();
     _popup?.remove();
     _currentPageNotifier.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _flushLastPageSave();
+    }
+  }
+
+  void _onPdfPageChanged(PdfPageChangedDetails details) {
+    final newPage = details.newPageNumber;
+
+    if (newPage == _currentPage) return;
+
+    _currentPage = newPage;
+
+    if (_currentPageNotifier.value != newPage) {
+      _currentPageNotifier.value = newPage;
+    }
+
+    if (_lastSavedPage == newPage) return; // CHANGED: do not schedule a save for a page already persisted
+
+    _pageSaveDebounce?.cancel();
+    _pageSaveDebounce = Timer(
+      const Duration(seconds: 2),
+          () async {
+        if (_lastSavedPage == _currentPage) return; // CHANGED
+        await _saveLastPage(_currentPage);
+        _lastSavedPage = _currentPage;
+      },
+    );
+  }
+
+
+  Future<void> _flushLastPageSave() async {
+    _pageSaveDebounce?.cancel();
+
+    if (_lastSavedPage == _currentPage) return;
+
+    await _saveLastPage(_currentPage);
+    _lastSavedPage = _currentPage;
   }
 
   Future<void> _saveLastPage(int page) async {
@@ -329,11 +372,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
                 _totalPages = d.document.pages.count;
               });
             },
-            onPageChanged: (d) {
-              _currentPage = d.newPageNumber;
-              _currentPageNotifier.value = d.newPageNumber;
-              _debouncedSaveLastPage(d.newPageNumber);
-            },
+            onPageChanged: _onPdfPageChanged,
             onTextSelectionChanged: (d) {
               if (d.selectedText == null || d.globalSelectedRegion == null) {
                 _hidePopup();
