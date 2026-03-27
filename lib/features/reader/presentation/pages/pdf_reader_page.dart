@@ -46,6 +46,21 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
   Timer? _pdfSaveDebounce;
   int? _lastSavedPage;
 
+  Future<void> _initReader() async {
+    await _initializePreferences();
+
+    final lastPage = await _loadLastPage();
+    if (lastPage != null) {
+      _currentPage = lastPage;
+      _currentPageNotifier.value = lastPage;
+      _lastSavedPage = lastPage;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _controller.jumpToPage(lastPage);
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -55,17 +70,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
     _translator = DeepLTranslationService(apiKey);
     _wordsRepository = WordsRepository();
 
-    _initializePreferences();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final lastPage = await _loadLastPage();
-      if (lastPage != null) {
-        _currentPage = lastPage;
-        _currentPageNotifier.value = lastPage;
-        _lastSavedPage = lastPage;
-        _controller.jumpToPage(lastPage);
-      }
-    });
+    _initReader();
   }
 
   Future<void> _initializePreferences() async {
