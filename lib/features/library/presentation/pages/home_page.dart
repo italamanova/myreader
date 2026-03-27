@@ -36,38 +36,20 @@ class _HomePageState extends State<HomePage> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: AppConstants.supportedFormats,
-      withData: true,
+      withData: false,
     );
-    if (result == null || result.files.isEmpty) return;
+    if (result == null) return;
 
-    final file = result.files.single;
-    final bytes = file.bytes;
-    if (bytes == null) return;
+    final pickedPath = result.files.single.path;
+    if (pickedPath == null) return;
 
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        title: Text('Importing book...'),
-        content: SizedBox(
-          height: 50,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ),
-    );
+    final sourceFile = File(pickedPath);
 
     try {
-      await LocalBookStorageService.saveBook(file.name, bytes);
-      if (!mounted) return;
-      Navigator.pop(context);
+      await LocalBookStorageService.saveBook(sourceFile, sourceFile.path.split(Platform.pathSeparator).last);
       _refresh();
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import failed: $e')),
-      );
+      debugPrint('Failed to save book: $e');
     }
   }
 
