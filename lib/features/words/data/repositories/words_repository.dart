@@ -1,13 +1,16 @@
 import 'package:isar_community/isar.dart';
-import 'entries/word_entry.dart';
-import 'isar_db.dart';
 
+import '../../../../core/database/isar/isar_db.dart';
+import '../models/word_entry.dart';
+
+/// Repository for managing word entries
 class WordsRepository {
-  Future<Isar> get _db async => IsarDb.open();
+  Future<Isar> get _db async => await IsarDb.instance;
 
   String _normalize(String s) =>
       s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
+  /// Add a new word to the database
   Future<WordEntry> addWord({
     required String word,
     String? translation,
@@ -40,6 +43,7 @@ class WordsRepository {
     return entry;
   }
 
+  /// Watch all words for a specific book
   Stream<List<WordEntry>> watchWordsForBook(String bookPath) async* {
     final db = await _db;
 
@@ -50,6 +54,7 @@ class WordsRepository {
         .watch(fireImmediately: true);
   }
 
+  /// Watch all saved words
   Stream<List<WordEntry>> watchAllWords() async* {
     final db = await _db;
     yield* db.wordEntrys.where().sortByCreatedAtDesc().watch(
@@ -57,6 +62,7 @@ class WordsRepository {
     );
   }
 
+  /// Delete a word by ID
   Future<void> deleteWord(Id id) async {
     final db = await _db;
     await db.writeTxn(() async {
@@ -64,3 +70,7 @@ class WordsRepository {
     });
   }
 }
+
+
+
+

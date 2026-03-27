@@ -1,40 +1,16 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:myreader/words/isar_db.dart';
 
-import 'home_page.dart';
+import 'app/app.dart';
+import 'core/database/isar/isar_db.dart';
+import 'features/library/presentation/pages/home_page.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
-  final apiKey = dotenv.env['DEEPL_API_KEY']!;
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize core services
   await IsarDb.open();
-  runApp(PdfReaderApp(apiKey: apiKey));
-}
 
-class PdfReaderApp extends StatelessWidget {
-  final String apiKey;
-
-  const PdfReaderApp({super.key, required this.apiKey});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'My Reader',
-      theme: ThemeData(useMaterial3: true),
-      scrollBehavior: MyScrollBehavior(),
-      home: const HomePage(),
-    );
-  }
-}
-
-class MyScrollBehavior extends MaterialScrollBehavior {
-  @override
-  Set<PointerDeviceKind> get dragDevices => {
-    PointerDeviceKind.touch,
-    PointerDeviceKind.mouse,
-    PointerDeviceKind.trackpad,
-  };
+  runApp(const MyReaderApp(home: HomePage()));
 }

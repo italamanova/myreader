@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
-import '../translation_service.dart';
+import '../../../../core/services/translation/translation_service.dart';
 
+/// Popup widget for text selection and translation
 class TextSelectionPopup extends StatefulWidget {
   const TextSelectionPopup({
     super.key,
@@ -33,7 +34,7 @@ class TextSelectionPopup extends StatefulWidget {
 class _TextSelectionPopupState extends State<TextSelectionPopup> {
   bool _translating = false;
   String? _translation;
-  String? _lastKey; // prevents re-calling API for same text/lang
+  String? _lastKey;
 
   @override
   void initState() {
@@ -103,7 +104,6 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
     double left = r.center.dx - popupWidth / 2;
     left = left.clamp(margin, screenWidth - popupWidth - margin);
 
-    // Place above if possible, otherwise below
     final double preferredTop = r.top - 180;
     final double top = preferredTop < media.padding.top + margin
         ? r.bottom + 14
@@ -160,7 +160,6 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Row of minimal buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -201,9 +200,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                             ClipboardData(text: widget.selectedText),
                           ),
                         ),
-
                         const SizedBox(width: 8),
-
                         Opacity(
                           opacity: canSave ? 1.0 : 0.4,
                           child: iconChip(
@@ -218,9 +215,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                                 : null,
                           ),
                         ),
-
                         const SizedBox(width: 8),
-
                         iconChip(
                           icon: Icons.close,
                           iconColor: cs.onSurfaceVariant,
@@ -230,10 +225,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 10),
-
-                // Translation area only
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -267,3 +259,4 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
     );
   }
 }
+

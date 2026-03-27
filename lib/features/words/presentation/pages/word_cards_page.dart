@@ -2,9 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'entries/word_entry.dart';
-import 'word_repository.dart';
+import '../../data/models/word_entry.dart';
+import '../../data/repositories/words_repository.dart';
 
+/// Page for reviewing saved words with flashcards
 class WordCardsPage extends StatelessWidget {
   const WordCardsPage({super.key});
 
@@ -90,7 +91,7 @@ class _WordCardsPagerState extends State<_WordCardsPager> {
 
     if (confirmed != true) return;
 
-    await widget.repository.deleteWord(current.id); // CHANGED: delete the current card using existing repository method
+    await widget.repository.deleteWord(current.id);
 
     if (!mounted) return;
 
@@ -99,7 +100,7 @@ class _WordCardsPagerState extends State<_WordCardsPager> {
         : _currentIndex;
 
     setState(() {
-      _currentIndex = nextIndex; // CHANGED: keep index valid after deleting the current card
+      _currentIndex = nextIndex;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -127,7 +128,7 @@ class _WordCardsPagerState extends State<_WordCardsPager> {
         ),
         const SizedBox(height: 8),
         IconButton.filledTonal(
-          onPressed: _deleteCurrentCard, // CHANGED: delete the currently visible word card
+          onPressed: _deleteCurrentCard,
           tooltip: 'Delete word',
           icon: const Icon(Icons.delete_outline),
         ),
@@ -153,7 +154,7 @@ class _WordCardsPagerState extends State<_WordCardsPager> {
             },
           ),
         ),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 20)),
+        const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 20)),
       ],
     );
   }
@@ -316,3 +317,4 @@ class _CardFace extends StatelessWidget {
     );
   }
 }
+

@@ -1,6 +1,8 @@
 import 'package:isar_community/isar.dart';
+
 part 'word_entry.g.dart';
 
+/// Word entry model for Isar database
 @collection
 class WordEntry {
   Id id = Isar.autoIncrement;
@@ -20,3 +22,4 @@ class WordEntry {
 
   WordEntry();
 }
+

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:isar_community/isar.dart';
 
-import 'entries/word_entry.dart';
-import 'word_repository.dart';
+import '../../data/models/word_entry.dart';
+import '../../data/repositories/words_repository.dart';
 
+/// Panel widget displaying saved words grouped by page
 class SavedWordsPanel extends StatelessWidget {
   const SavedWordsPanel({
     super.key,
@@ -56,6 +57,7 @@ class SavedWordsPanel extends StatelessWidget {
                   final pages = byPage.keys.toList()..sort();
 
                   return ListView.builder(
+                    key: ValueKey('words_$bookPath'),
                     itemCount: pages.length,
                     itemBuilder: (context, index) {
                       final page = pages[index];
@@ -63,6 +65,7 @@ class SavedWordsPanel extends StatelessWidget {
                         ..sort((a, b) => a.wordOriginal.compareTo(b.wordOriginal));
 
                       return _PageExpansionTile(
+                        key: ValueKey('page_$page'),
                         pageNumber: page,
                         entries: pageWords,
                         onJumpToPage: onJumpToPage,
@@ -80,13 +83,15 @@ class SavedWordsPanel extends StatelessWidget {
   }
 }
 
+/// Expansion tile for a single page of words
 class _PageExpansionTile extends StatefulWidget {
   const _PageExpansionTile({
+    Key? key,
     required this.pageNumber,
     required this.entries,
     required this.onJumpToPage,
     required this.onDelete,
-  });
+  }) : super(key: key);
 
   final int pageNumber;
   final List<WordEntry> entries;
@@ -139,3 +144,5 @@ class _PageExpansionTileState extends State<_PageExpansionTile> {
     );
   }
 }
+
+

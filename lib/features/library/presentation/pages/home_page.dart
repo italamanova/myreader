@@ -2,33 +2,14 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 
-import 'epub/epub_reader.dart';
-import 'pdf/pdf_reader.dart';
-import 'words/word_cards_page.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/storage/local_book_storage_service.dart';
+import '../../../reader/presentation/pages/epub_reader_page.dart';
+import '../../../reader/presentation/pages/pdf_reader_page.dart';
+import '../../../words/presentation/pages/word_cards_page.dart';
 
-
-Future<Directory> getOrCreateBooksFolder() async {
-  final dir = await getApplicationDocumentsDirectory();
-  final Directory booksDir;
-  booksDir = Directory('${dir.path}/MyBooks');
-  if (!await booksDir.exists()) {
-    await booksDir.create(recursive: true);
-  }
-  return booksDir;
-}
-
-Future<List<FileSystemEntity>> listBookFiles() async {
-  final dir = await getOrCreateBooksFolder();
-  if (!await dir.exists()) return <FileSystemEntity>[];
-  final all = await dir.list().toList();
-  return all.where((f) {
-    final name = f.path.toLowerCase();
-    return name.endsWith('.pdf') || name.endsWith('.epub');
-  }).toList();
-}
-
+/// Home page displaying the library of books
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -42,19 +23,19 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _books = listBookFiles();
+    _books = LocalBookStorageService.listBookFiles();
   }
 
   void _refresh() {
     setState(() {
-      _books = listBookFiles();
+      _books = LocalBookStorageService.listBookFiles();
     });
   }
 
   Future<void> _pickAndSave() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'epub'],
+      allowedExtensions: AppConstants.supportedFormats,
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
@@ -63,13 +44,31 @@ class _HomePageState extends State<HomePage> {
     final bytes = file.bytes;
     if (bytes == null) return;
 
-    final destDir = await getOrCreateBooksFolder();
-    final destPath = '${destDir.path}/${file.name}';
-    final out = File(destPath);
-    await out.writeAsBytes(bytes, flush: true);
-
     if (!mounted) return;
-    _refresh();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        title: Text('Importing book...'),
+        content: SizedBox(
+          height: 50,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    );
+
+    try {
+      await LocalBookStorageService.saveBook(file.name, bytes);
+      if (!mounted) return;
+      Navigator.pop(context);
+      _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Import failed: $e')),
+      );
+    }
   }
 
   void _openFile(FileSystemEntity entity) {
@@ -82,9 +81,9 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     } else if (lower.endsWith('.epub')) {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => EpubReaderPage(filePath: path)));
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => EpubReaderPage(filePath: path)),
+      );
     }
   }
 
@@ -147,7 +146,7 @@ class _HomePageState extends State<HomePage> {
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () async {
                     try {
-                      await File(f.path).delete();
+                      await LocalBookStorageService.deleteBook(f.path);
                       if (!mounted) return;
                       _refresh();
                     } catch (_) {}
@@ -165,3 +164,5 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+

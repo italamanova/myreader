@@ -4,13 +4,18 @@ import 'package:epub_view/epub_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import '../translation_service.dart';
+import '../../../../core/services/translation/translation_service.dart';
 
+/// EPUB reader page with basic translation support
 class EpubReaderPage extends StatefulWidget {
-  final String filePath;
-  final String? apiKey;
+  const EpubReaderPage({
+    super.key,
+    this.apiKey,
+    required this.filePath,
+  });
 
-  const EpubReaderPage({super.key, this.apiKey, required this.filePath});
+  final String? apiKey;
+  final String filePath;
 
   @override
   State<EpubReaderPage> createState() => _EpubReaderPageState();
@@ -18,7 +23,6 @@ class EpubReaderPage extends StatefulWidget {
 
 class _EpubReaderPageState extends State<EpubReaderPage> {
   late final EpubController _epubController;
-
   late final TranslationService _translator;
 
   @override
@@ -67,3 +71,4 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     );
   }
 }
+

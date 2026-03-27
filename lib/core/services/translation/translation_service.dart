@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+/// Abstract interface for translation services
 abstract class TranslationService {
+  /// Translate text to target language
   Future<String> translate({
     required String text,
     required String targetLang,
@@ -10,8 +12,10 @@ abstract class TranslationService {
   });
 }
 
+/// DeepL-based translation service implementation
 class DeepLTranslationService implements TranslationService {
   final String apiKey; // keep secret!
+
   DeepLTranslationService(this.apiKey);
 
   @override

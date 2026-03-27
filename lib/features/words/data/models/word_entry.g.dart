@@ -32,18 +32,28 @@ const WordEntrySchema = CollectionSchema(
       name: r'pageNumber',
       type: IsarType.long,
     ),
-    r'translation': PropertySchema(
+    r'timesCorrect': PropertySchema(
       id: 3,
+      name: r'timesCorrect',
+      type: IsarType.long,
+    ),
+    r'timesSeen': PropertySchema(
+      id: 4,
+      name: r'timesSeen',
+      type: IsarType.long,
+    ),
+    r'translation': PropertySchema(
+      id: 5,
       name: r'translation',
       type: IsarType.string,
     ),
     r'wordNormalized': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'wordNormalized',
       type: IsarType.string,
     ),
     r'wordOriginal': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'wordOriginal',
       type: IsarType.string,
     ),
@@ -91,9 +101,11 @@ void _wordEntrySerialize(
   writer.writeString(offsets[0], object.bookPath);
   writer.writeDateTime(offsets[1], object.createdAt);
   writer.writeLong(offsets[2], object.pageNumber);
-  writer.writeString(offsets[3], object.translation);
-  writer.writeString(offsets[4], object.wordNormalized);
-  writer.writeString(offsets[5], object.wordOriginal);
+  writer.writeLong(offsets[3], object.timesCorrect);
+  writer.writeLong(offsets[4], object.timesSeen);
+  writer.writeString(offsets[5], object.translation);
+  writer.writeString(offsets[6], object.wordNormalized);
+  writer.writeString(offsets[7], object.wordOriginal);
 }
 
 WordEntry _wordEntryDeserialize(
@@ -107,9 +119,11 @@ WordEntry _wordEntryDeserialize(
   object.createdAt = reader.readDateTime(offsets[1]);
   object.id = id;
   object.pageNumber = reader.readLong(offsets[2]);
-  object.translation = reader.readStringOrNull(offsets[3]);
-  object.wordNormalized = reader.readString(offsets[4]);
-  object.wordOriginal = reader.readString(offsets[5]);
+  object.timesCorrect = reader.readLong(offsets[3]);
+  object.timesSeen = reader.readLong(offsets[4]);
+  object.translation = reader.readStringOrNull(offsets[5]);
+  object.wordNormalized = reader.readString(offsets[6]);
+  object.wordOriginal = reader.readString(offsets[7]);
   return object;
 }
 
@@ -127,10 +141,14 @@ P _wordEntryDeserializeProp<P>(
     case 2:
       return (reader.readLong(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 5:
+      return (reader.readStringOrNull(offset)) as P;
+    case 6:
+      return (reader.readString(offset)) as P;
+    case 7:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -542,6 +560,118 @@ extension WordEntryQueryFilter
       return query.addFilterCondition(
         FilterCondition.between(
           property: r'pageNumber',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterFilterCondition> timesCorrectEqualTo(
+    int value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'timesCorrect', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterFilterCondition>
+  timesCorrectGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'timesCorrect',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterFilterCondition>
+  timesCorrectLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'timesCorrect',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterFilterCondition> timesCorrectBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'timesCorrect',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterFilterCondition> timesSeenEqualTo(
+    int value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'timesSeen', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterFilterCondition>
+  timesSeenGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'timesSeen',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterFilterCondition> timesSeenLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'timesSeen',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterFilterCondition> timesSeenBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'timesSeen',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
@@ -1045,6 +1175,30 @@ extension WordEntryQuerySortBy on QueryBuilder<WordEntry, WordEntry, QSortBy> {
     });
   }
 
+  QueryBuilder<WordEntry, WordEntry, QAfterSortBy> sortByTimesCorrect() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'timesCorrect', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterSortBy> sortByTimesCorrectDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'timesCorrect', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterSortBy> sortByTimesSeen() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'timesSeen', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterSortBy> sortByTimesSeenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'timesSeen', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordEntry, WordEntry, QAfterSortBy> sortByTranslation() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'translation', Sort.asc);
@@ -1132,6 +1286,30 @@ extension WordEntryQuerySortThenBy
     });
   }
 
+  QueryBuilder<WordEntry, WordEntry, QAfterSortBy> thenByTimesCorrect() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'timesCorrect', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterSortBy> thenByTimesCorrectDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'timesCorrect', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterSortBy> thenByTimesSeen() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'timesSeen', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QAfterSortBy> thenByTimesSeenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'timesSeen', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordEntry, WordEntry, QAfterSortBy> thenByTranslation() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'translation', Sort.asc);
@@ -1191,6 +1369,18 @@ extension WordEntryQueryWhereDistinct
     });
   }
 
+  QueryBuilder<WordEntry, WordEntry, QDistinct> distinctByTimesCorrect() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'timesCorrect');
+    });
+  }
+
+  QueryBuilder<WordEntry, WordEntry, QDistinct> distinctByTimesSeen() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'timesSeen');
+    });
+  }
+
   QueryBuilder<WordEntry, WordEntry, QDistinct> distinctByTranslation({
     bool caseSensitive = true,
   }) {
@@ -1242,6 +1432,18 @@ extension WordEntryQueryProperty
   QueryBuilder<WordEntry, int, QQueryOperations> pageNumberProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'pageNumber');
+    });
+  }
+
+  QueryBuilder<WordEntry, int, QQueryOperations> timesCorrectProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'timesCorrect');
+    });
+  }
+
+  QueryBuilder<WordEntry, int, QQueryOperations> timesSeenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'timesSeen');
     });
   }
 

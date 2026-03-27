@@ -3,19 +3,27 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
-import '../translation_service.dart';
-import '../words/saved_words_panel.dart';
-import '../words/word_repository.dart';
-import 'text_popup.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/preferences/app_preferences.dart';
+import '../../../../core/services/translation/translation_service.dart';
+import '../../../words/data/repositories/words_repository.dart';
+import '../../../words/presentation/widgets/saved_words_panel.dart';
+import '../widgets/text_selection_popup.dart';
 
+/// PDF reader page with translation and annotation support
 class PdfReaderPage extends StatefulWidget {
-  const PdfReaderPage({super.key, this.apiKey, required this.filePath});
+  const PdfReaderPage({
+    super.key,
+    this.apiKey,
+    required this.filePath,
+    this.appPreferences,
+  });
 
   final String? apiKey;
   final File filePath;
+  final AppPreferences? appPreferences;
 
   @override
   State<PdfReaderPage> createState() => _PdfReaderPageState();
@@ -26,10 +34,11 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   late final PdfViewerController _controller;
   late final TranslationService _translator;
   late final WordsRepository _wordsRepository;
+  late AppPreferences _appPreferences;
   final ValueNotifier<int> _currentPageNotifier = ValueNotifier<int>(1);
 
   OverlayEntry? _popup;
-  String _targetLang = 'uk';
+  String _targetLang = AppConstants.defaultTargetLanguage;
   int _currentPage = 1;
   int _totalPages = 0;
 
@@ -44,9 +53,8 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     _translator = DeepLTranslationService(apiKey);
     _wordsRepository = WordsRepository();
 
-    _loadTargetLanguage();
+    _initializePreferences();
 
-    // Restore last page
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final lastPage = await _loadLastPage();
       if (lastPage != null) {
@@ -55,17 +63,25 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     });
   }
 
+  Future<void> _initializePreferences() async {
+    if (widget.appPreferences != null) {
+      _appPreferences = widget.appPreferences!;
+    } else {
+      _appPreferences = await initAppPreferences();
+    }
+    _loadTargetLanguage();
+  }
+
   void _debouncedSaveLastPage(int page) {
     _pageSaveDebounce?.cancel();
-    _pageSaveDebounce = Timer(const Duration(milliseconds: 700), () {
+    _pageSaveDebounce = Timer(AppConstants.pageSaveDebounceDuration, () {
       _saveLastPage(page);
     });
   }
 
   void _scheduleAutoSave() {
-    // CHANGED: debounce full PDF writes because saveDocument() is expensive
     _pdfSaveDebounce?.cancel();
-    _pdfSaveDebounce = Timer(const Duration(seconds: 2), () async {
+    _pdfSaveDebounce = Timer(AppConstants.pdfSaveDebounceDuration, () async {
       await _autoSave();
     });
   }
@@ -80,26 +96,28 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     super.dispose();
   }
 
-  // Save & load last page position
   Future<void> _saveLastPage(int page) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('lastPage_${widget.filePath.path}', page);
+    await _appPreferences.setLastPage(widget.filePath.path, page);
   }
 
   Future<int?> _loadLastPage() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('lastPage_${widget.filePath.path}');
+    return _appPreferences.getLastPage(widget.filePath.path);
   }
 
-  // Auto-save annotations
   Future<void> _autoSave() async {
     try {
       final bytes = await _controller.saveDocument(
         flattenOption: PdfFlattenOption.none,
       );
-      await widget.filePath.writeAsBytes(bytes, flush: true);
+      final tempPath = '${widget.filePath.path}.tmp';
+      final tempFile = File(tempPath);
+      await tempFile.writeAsBytes(bytes, flush: true);
+      await tempFile.rename(widget.filePath.path);
     } catch (e) {
       debugPrint('Auto-save failed: $e');
+      try {
+        await File('${widget.filePath.path}.tmp').delete();
+      } catch (_) {}
     }
   }
 
@@ -126,7 +144,6 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
           _controller.clearSelection();
           _hidePopup();
         },
-
         onSaveWord: (word, translation) async {
           await _wordsRepository.addWord(
             word: word,
@@ -149,42 +166,21 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
   }
 
   Future<void> _loadTargetLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('targetLang');
-    if (saved != null && saved.isNotEmpty) {
-      setState(() => _targetLang = saved);
-    }
+    final saved = _appPreferences.targetLanguage;
+    setState(() => _targetLang = saved);
   }
 
   Future<void> _saveTargetLanguage(String lang) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('targetLang', lang);
+    await _appPreferences.setTargetLanguage(lang);
   }
 
   String _langLabel(String code) {
-    switch (code) {
-      case 'sv':
-        return 'Swedish';
-      case 'en':
-        return 'English';
-      case 'uk':
-        return 'Ukrainian';
-      default:
-        return code.toUpperCase();
-    }
+    return AppConstants.supportedLanguages[code] ?? code.toUpperCase();
   }
 
   String _langShortLabel(String code) {
-    switch (code) {
-      case 'sv':
-        return 'SV';
-      case 'en':
-        return 'EN';
-      case 'uk':
-        return 'UK';
-      default:
-        return code.toUpperCase();
-    }
+    final label = _langLabel(code);
+    return label.substring(0, 2).toUpperCase();
   }
 
   @override
@@ -219,7 +215,7 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
         ),
         flexibleSpace: Builder(
           builder: (context) {
-            final isSmallScreen = MediaQuery.sizeOf(context).width < 600; // CHANGED: hide centered page counter on small screens
+            final isSmallScreen = MediaQuery.sizeOf(context).width < 600;
 
             if (isSmallScreen) {
               return const SizedBox.shrink();
@@ -261,53 +257,23 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
                     setState(() => _targetLang = lang);
                     _saveTargetLanguage(lang);
                   },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'sv',
-                      child: Row(
-                        children: [
-                          if (_targetLang == 'sv')
-                            Icon(
-                              Icons.check,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary,
+                  itemBuilder: (context) => AppConstants.supportedLanguages.entries
+                      .map((entry) => PopupMenuItem(
+                            value: entry.key,
+                            child: Row(
+                              children: [
+                                if (_targetLang == entry.key)
+                                  Icon(
+                                    Icons.check,
+                                    size: 18,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                if (_targetLang == entry.key) const SizedBox(width: 8),
+                                Text(entry.value),
+                              ],
                             ),
-                          if (_targetLang == 'sv') const SizedBox(width: 8),
-                          const Text('Swedish'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'en',
-                      child: Row(
-                        children: [
-                          if (_targetLang == 'en')
-                            Icon(
-                              Icons.check,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          if (_targetLang == 'en') const SizedBox(width: 8),
-                          const Text('English'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'uk',
-                      child: Row(
-                        children: [
-                          if (_targetLang == 'uk')
-                            Icon(
-                              Icons.check,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          if (_targetLang == 'uk') const SizedBox(width: 8),
-                          const Text('Ukrainian'),
-                        ],
-                      ),
-                    ),
-                  ],
+                          ))
+                      .toList(),
                   child: Material(
                     color: Theme.of(context).colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(999),
@@ -404,21 +370,22 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
             onAnnotationRemoved: (_) => _scheduleAutoSave(),
             onAnnotationEdited: (_) => _scheduleAutoSave(),
           );
+
           if (!isWide) {
             return pdfViewer;
           }
+
           return Row(
             children: [
               Expanded(child: pdfViewer),
               const VerticalDivider(width: 1),
-
               SizedBox(
                 width: 360,
                 child: SavedWordsPanel(
                   repository: _wordsRepository,
                   bookPath: widget.filePath.path,
                   onJumpToPage: (pageNumber) {
-                    _controller.jumpToPage(pageNumber); // CHANGED
+                    _controller.jumpToPage(pageNumber);
                   },
                 ),
               ),
@@ -429,3 +396,4 @@ class _PdfReaderPageState extends State<PdfReaderPage> {
     );
   }
 }
+
