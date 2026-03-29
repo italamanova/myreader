@@ -13,7 +13,8 @@ class TextSelectionPopup extends StatefulWidget {
     required this.targetLang,
     required this.translator,
     required this.controller,
-    required this.getSelectedTextLines,
+    required this.selectedTextLines,
+    required this.onHighlightSelected,
     required this.onClose,
     required this.onSaveWord,
   });
@@ -23,7 +24,8 @@ class TextSelectionPopup extends StatefulWidget {
   final String targetLang;
   final TranslationService translator;
   final PdfViewerController controller;
-  final List<PdfTextLine> Function() getSelectedTextLines;
+  final List<PdfTextLine> selectedTextLines;
+  final void Function(Color color) onHighlightSelected;
   final VoidCallback onClose;
   final Future<void> Function(String word, String? translation) onSaveWord;
 
@@ -81,17 +83,6 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
     }
   }
 
-  void _highlight(Color color) {
-    final lines = widget.getSelectedTextLines();
-    if (lines.isEmpty) return;
-
-    final ann = HighlightAnnotation(textBoundsCollection: lines)
-      ..color = color
-      ..opacity = 1.0;
-
-    widget.controller.addAnnotation(ann);
-  }
-
   @override
   Widget build(BuildContext context) {
     const double popupWidth = 320;
@@ -139,7 +130,10 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
     return Positioned(
       left: left,
       top: top,
-      child: Material(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {},
+          child: Material(
         color: Colors.transparent,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: popupWidth),
@@ -171,7 +165,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                             color: Colors.yellowAccent,
                           ),
                           tooltip: 'Highlight yellow',
-                          onPressed: () => _highlight(Colors.yellowAccent),
+                          onPressed: () => widget.onHighlightSelected(Colors.yellowAccent),
                         ),
                         IconButton(
                           icon: const Icon(
@@ -179,7 +173,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                             color: Colors.lightGreenAccent,
                           ),
                           tooltip: 'Highlight green',
-                          onPressed: () => _highlight(Colors.lightGreenAccent),
+                          onPressed: () => widget.onHighlightSelected(Colors.lightGreenAccent),
                         ),
                         IconButton(
                           icon: const Icon(
@@ -187,7 +181,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
                             color: Colors.pinkAccent,
                           ),
                           tooltip: 'Highlight pink',
-                          onPressed: () => _highlight(Colors.pinkAccent),
+                          onPressed: () => widget.onHighlightSelected(Colors.pinkAccent),
                         ),
                       ],
                     ),
@@ -256,6 +250,7 @@ class _TextSelectionPopupState extends State<TextSelectionPopup> {
           ),
         ),
       ),
+        )
     );
   }
 }

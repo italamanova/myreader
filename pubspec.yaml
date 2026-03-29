@@ -38,10 +38,10 @@ dependencies:
   file_picker: ^10.3.2
   file_selector: ^1.0.1
   pdfx: ^2.9.2
-  syncfusion_flutter_pdfviewer: ^31.1.22
-  syncfusion_flutter_pdf: ^31.1.22
+  syncfusion_flutter_pdfviewer: ^33.1.45
+  syncfusion_flutter_pdf: ^33.1.45
   http: ^1.2.0
-  flutter_dotenv: ^5.1.0
+  flutter_dotenv: ^6.0.0
   path_provider: ^2.0.17
   shared_preferences: ^2.5.3
   epub_view: ^3.2.0
@@ -59,7 +59,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
