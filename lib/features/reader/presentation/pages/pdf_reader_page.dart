@@ -13,7 +13,7 @@ import '../../../words/presentation/widgets/saved_words_panel.dart';
 import '../widgets/text_selection_popup.dart';
 
 /// PDF reader page with translation and annotation support
-class PdfReaderPage extends StatefulWidget{
+class PdfReaderPage extends StatefulWidget {
   const PdfReaderPage({
     super.key,
     this.apiKey,
@@ -29,13 +29,29 @@ class PdfReaderPage extends StatefulWidget{
   State<PdfReaderPage> createState() => _PdfReaderPageState();
 }
 
-class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserver{
+class _PdfSelectionSnapshot {
+  const _PdfSelectionSnapshot({
+    required this.text,
+    required this.region,
+    required this.lines,
+  });
+
+  final String text;
+  final Rect region;
+  final List<PdfTextLine> lines;
+}
+
+class _PdfReaderPageState extends State<PdfReaderPage>
+    with WidgetsBindingObserver {
   final _viewerKey = GlobalKey<SfPdfViewerState>();
   late final PdfViewerController _controller;
   late final TranslationService _translator;
   late final WordsRepository _wordsRepository;
   late AppPreferences _appPreferences;
   final ValueNotifier<int> _currentPageNotifier = ValueNotifier<int>(1);
+  _PdfSelectionSnapshot? _popupSelection;
+  bool _suppressNextSelectionClear = false;
+  bool _suppressNextAnnotationSelected = false;
 
   OverlayEntry? _popup;
   String _targetLang = AppConstants.defaultTargetLanguage;
@@ -111,6 +127,9 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
   }
 
   void _onPdfPageChanged(PdfPageChangedDetails details) {
+    _hidePopup();
+    _popupSelection = null;
+
     final newPage = details.newPageNumber;
 
     if (newPage == _currentPage) return;
@@ -121,19 +140,15 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
       _currentPageNotifier.value = newPage;
     }
 
-    if (_lastSavedPage == newPage) return; // CHANGED: do not schedule a save for a page already persisted
+    if (_lastSavedPage == newPage) return;
 
     _pageSaveDebounce?.cancel();
-    _pageSaveDebounce = Timer(
-      const Duration(seconds: 2),
-          () async {
-        if (_lastSavedPage == _currentPage) return; // CHANGED
-        await _saveLastPage(_currentPage);
-        _lastSavedPage = _currentPage;
-      },
-    );
+    _pageSaveDebounce = Timer(const Duration(seconds: 2), () async {
+      if (_lastSavedPage == _currentPage) return;
+      await _saveLastPage(_currentPage);
+      _lastSavedPage = _currentPage;
+    });
   }
-
 
   Future<void> _flushLastPageSave() async {
     _pageSaveDebounce?.cancel();
@@ -172,24 +187,28 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
   void _hidePopup() {
     _popup?.remove();
     _popup = null;
+    _popupSelection = null;
+    _suppressNextSelectionClear = false;
   }
 
-  void _showPopup(BuildContext context, PdfTextSelectionChangedDetails d) {
+  void _showPopup(BuildContext context, _PdfSelectionSnapshot selection) {
     final overlay = Overlay.of(context);
-    final region = d.globalSelectedRegion!;
     _popup?.remove();
 
     _popup = OverlayEntry(
       builder: (_) => TextSelectionPopup(
-        region: region,
-        selectedText: d.selectedText ?? '',
+        region: selection.region,
+        selectedText: selection.text,
         targetLang: _targetLang,
         translator: _translator,
         controller: _controller,
-        getSelectedTextLines: () =>
-            _viewerKey.currentState?.getSelectedTextLines() ?? [],
+        selectedTextLines: selection.lines,
+        onHighlightSelected: (color) {
+          _highlightSelectionLines(selection.lines, color);
+        },
         onClose: () {
           _controller.clearSelection();
+          _popupSelection = null;
           _hidePopup();
         },
         onSaveWord: (word, translation) async {
@@ -229,6 +248,18 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
   String _langShortLabel(String code) {
     final label = _langLabel(code);
     return label.substring(0, 2).toUpperCase();
+  }
+
+  void _highlightSelectionLines(List<PdfTextLine> lines, Color color) {
+    if (lines.isEmpty) return;
+
+    _suppressNextAnnotationSelected = true;
+
+    final ann = HighlightAnnotation(textBoundsCollection: lines)
+      ..color = color
+      ..opacity = 1.0;
+
+    _controller.addAnnotation(ann);
   }
 
   @override
@@ -305,22 +336,27 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
                     setState(() => _targetLang = lang);
                     _saveTargetLanguage(lang);
                   },
-                  itemBuilder: (context) => AppConstants.supportedLanguages.entries
-                      .map((entry) => PopupMenuItem(
-                            value: entry.key,
-                            child: Row(
-                              children: [
-                                if (_targetLang == entry.key)
-                                  Icon(
-                                    Icons.check,
-                                    size: 18,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                                if (_targetLang == entry.key) const SizedBox(width: 8),
-                                Text(entry.value),
-                              ],
-                            ),
-                          ))
+                  itemBuilder: (context) => AppConstants
+                      .supportedLanguages
+                      .entries
+                      .map(
+                        (entry) => PopupMenuItem(
+                          value: entry.key,
+                          child: Row(
+                            children: [
+                              if (_targetLang == entry.key)
+                                Icon(
+                                  Icons.check,
+                                  size: 18,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              if (_targetLang == entry.key)
+                                const SizedBox(width: 8),
+                              Text(entry.value),
+                            ],
+                          ),
+                        ),
+                      )
                       .toList(),
                   child: Material(
                     color: Theme.of(context).colorScheme.secondaryContainer,
@@ -336,23 +372,30 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
                           Icon(
                             Icons.translate_rounded,
                             size: isSmallScreen ? 16 : 18,
-                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSecondaryContainer,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             isSmallScreen
                                 ? _langShortLabel(_targetLang)
                                 : _langLabel(_targetLang),
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.onSecondaryContainer,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSecondaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                           const SizedBox(width: 2),
                           Icon(
                             Icons.arrow_drop_down_rounded,
                             size: isSmallScreen ? 18 : 22,
-                            color: Theme.of(context).colorScheme.onSecondaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSecondaryContainer,
                           ),
                         ],
                       ),
@@ -367,52 +410,93 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 900;
-          final pdfViewer = SfPdfViewer.file(
-            widget.filePath,
-            key: _viewerKey,
-            controller: _controller,
-            canShowTextSelectionMenu: false,
-            onDocumentLoaded: (d) {
-              setState(() {
-                _totalPages = d.document.pages.count;
-              });
+          final pdfViewer = Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: (_) {
+              _hidePopup();
+              _popupSelection =
+                  null;
             },
-            onPageChanged: _onPdfPageChanged,
-            onTextSelectionChanged: (d) {
-              if (d.selectedText == null || d.globalSelectedRegion == null) {
+            child: SfPdfViewer.file(
+              widget.filePath,
+              key: _viewerKey,
+              controller: _controller,
+              canShowTextSelectionMenu: false,
+              onDocumentLoaded: (d) {
+                setState(() {
+                  _totalPages = d.document.pages.count;
+                });
+              },
+              onPageChanged: _onPdfPageChanged,
+              onTextSelectionChanged: (d) {
+                final hasSelection =
+                    d.selectedText != null &&
+                    d.selectedText!.trim().isNotEmpty &&
+                    d.globalSelectedRegion != null;
+
+                if (!hasSelection) {
+                  if (_suppressNextSelectionClear) {
+                    _suppressNextSelectionClear = false;
+                    return;
+                  }
+                  _popupSelection = null;
+                  _hidePopup();
+                  return;
+                }
+
+                final currentLines =
+                    _viewerKey.currentState?.getSelectedTextLines() ?? [];
+                if (currentLines.isEmpty) return;
+
+                final selection = _PdfSelectionSnapshot(
+                  region: d.globalSelectedRegion!,
+                  text: d.selectedText!.trim(),
+                  lines: List<PdfTextLine>.from(currentLines),
+                );
+
+                _popupSelection = selection;
+                _suppressNextSelectionClear = true;
+                _highlightSelectionLines(selection.lines, Colors.blueAccent);
+                _showPopup(context, selection);
+              },
+              onAnnotationSelected: (details) async {
+                if (_suppressNextAnnotationSelected) {
+                  _suppressNextAnnotationSelected = false;
+                  return;
+                }
                 _hidePopup();
-              } else {
-                _showPopup(context, d);
-              }
-            },
-            onAnnotationSelected: (details) async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Delete annotation?'),
-                  content: const Text('Do you want to remove this highlight?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      child: const Text('Cancel'),
+                _popupSelection = null;
+
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete annotation?'),
+                    content: const Text(
+                      'Do you want to remove this highlight?',
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      child: const Text(
-                        'Remove',
-                        style: TextStyle(color: Colors.red),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancel'),
                       ),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
-                _controller.removeAnnotation(details);
-              }
-            },
-            onAnnotationAdded: (_) => _scheduleAutoSave(),
-            onAnnotationRemoved: (_) => _scheduleAutoSave(),
-            onAnnotationEdited: (_) => _scheduleAutoSave(),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text(
+                          'Remove',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  _controller.removeAnnotation(details);
+                }
+              },
+              onAnnotationAdded: (_) => _scheduleAutoSave(),
+              onAnnotationRemoved: (_) => _scheduleAutoSave(),
+              onAnnotationEdited: (_) => _scheduleAutoSave(),
+            ),
           );
 
           if (!isWide) {
@@ -440,4 +524,3 @@ class _PdfReaderPageState extends State<PdfReaderPage> with WidgetsBindingObserv
     );
   }
 }
-
