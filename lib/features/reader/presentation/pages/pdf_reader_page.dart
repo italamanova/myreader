@@ -52,6 +52,7 @@ class _PdfReaderPageState extends State<PdfReaderPage>
   _PdfSelectionSnapshot? _popupSelection;
   bool _suppressNextSelectionClear = false;
   bool _suppressNextAnnotationSelected = false;
+  bool get _isPopupVisible => _popup != null;
 
   OverlayEntry? _popup;
   String _targetLang = AppConstants.defaultTargetLanguage;
@@ -187,8 +188,11 @@ class _PdfReaderPageState extends State<PdfReaderPage>
   void _hidePopup() {
     _popup?.remove();
     _popup = null;
+  }
+
+  void _dismissPopupAndSelectionState() {
+    _hidePopup();
     _popupSelection = null;
-    _suppressNextSelectionClear = false;
   }
 
   void _showPopup(BuildContext context, _PdfSelectionSnapshot selection) {
@@ -413,9 +417,9 @@ class _PdfReaderPageState extends State<PdfReaderPage>
           final pdfViewer = Listener(
             behavior: HitTestBehavior.translucent,
             onPointerDown: (_) {
-              _hidePopup();
-              _popupSelection =
-                  null;
+              if (_isPopupVisible) {
+                _dismissPopupAndSelectionState();
+              }
             },
             child: SfPdfViewer.file(
               widget.filePath,
@@ -462,6 +466,11 @@ class _PdfReaderPageState extends State<PdfReaderPage>
               onAnnotationSelected: (details) async {
                 if (_suppressNextAnnotationSelected) {
                   _suppressNextAnnotationSelected = false;
+                  return;
+                }
+
+                if (_isPopupVisible) {
+                  _dismissPopupAndSelectionState();
                   return;
                 }
                 _hidePopup();
